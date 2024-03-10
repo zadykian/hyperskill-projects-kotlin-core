@@ -4,7 +4,7 @@ data class Card(val suit: Char, val rank: String) {
     override fun toString(): String = "$rank$suit"
 }
 
-abstract class GetCardsResult private constructor () {
+abstract class GetCardsResult private constructor() {
     class Success(val retrievedCards: List<Card>, val newDeck: Deck) : GetCardsResult()
 
     class Failure(val message: String) : GetCardsResult()
@@ -13,21 +13,19 @@ abstract class GetCardsResult private constructor () {
 class Deck private constructor(private val cards: List<Card>) {
     constructor() : this(cards = orderedCards())
 
-    fun shuffle() : Deck = Deck(this.cards.shuffled())
+    fun shuffle(): Deck = Deck(this.cards.shuffled())
 
-    fun getCards(numberOfCards: UByte): GetCardsResult {
-        val numberOfCardsInt = numberOfCards.toInt()
-        if (numberOfCardsInt > cards.size) {
-            return GetCardsResult.Failure(Messages.NOT_ENOUGH_CARDS)
+    fun getCards(numberOfCards: Int): GetCardsResult =
+        when {
+            numberOfCards !in 1..52 -> GetCardsResult.Failure(Messages.INVALID_NUMBER_OF_CARDS)
+            numberOfCards > cards.size -> GetCardsResult.Failure(Messages.NOT_ENOUGH_CARDS)
+            numberOfCards == cards.size -> GetCardsResult.Success(retrievedCards = cards, newDeck = emptyDeck())
+            else -> {
+                val retrievedCards = cards.subList(fromIndex = 0, toIndex = numberOfCards - 1)
+                val leftCards = cards.subList(fromIndex = numberOfCards, toIndex = cards.lastIndex)
+                GetCardsResult.Success(retrievedCards, newDeck = Deck(cards = leftCards))
+            }
         }
-        else if (numberOfCardsInt == cards.size) {
-            return GetCardsResult.Success(retrievedCards = cards, newDeck = emptyDeck())
-        }
-
-        val retrievedCards = cards.subList(fromIndex = 0, toIndex = numberOfCardsInt - 1)
-        val leftCards = cards.subList(fromIndex = numberOfCardsInt, toIndex = cards.lastIndex)
-        return GetCardsResult.Success(retrievedCards, newDeck = Deck(cards = leftCards))
-    }
 
     companion object {
         private val suits = listOf('♣', '♦', '♥', '♠')
