@@ -21,8 +21,8 @@ class Deck private constructor(private val cards: List<Card>) {
             numberOfCards > cards.size -> GetCardsResult.Failure(Messages.NOT_ENOUGH_CARDS)
             numberOfCards == cards.size -> GetCardsResult.Success(retrievedCards = cards, newDeck = emptyDeck())
             else -> {
-                val retrievedCards = cards.subList(fromIndex = 0, toIndex = numberOfCards - 1)
-                val leftCards = cards.subList(fromIndex = numberOfCards, toIndex = cards.lastIndex)
+                val retrievedCards = cards.subList(fromIndex = 0, toIndex = numberOfCards)
+                val leftCards = cards.subList(fromIndex = numberOfCards, toIndex = cards.size)
                 GetCardsResult.Success(retrievedCards, newDeck = Deck(cards = leftCards))
             }
         }
