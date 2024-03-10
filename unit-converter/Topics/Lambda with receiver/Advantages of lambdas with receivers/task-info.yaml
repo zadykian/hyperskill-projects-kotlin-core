@@ -1,0 +1,24 @@
+type: choice
+is_multiple_choice: true
+options:
+  - text: Using "it" and "this" interchangeably
+  - text: Building all scope functions
+  - text: You can access the members of that receiver object using the expression "this"
+  - text: You can create type-safe builders or DSLs
+  - text: It enables the access to visible methods and properties of a receiver without
+      any qualifier
+  - text: Accessing private methods of a receiver object
+files:
+  - name: src/Main.kt
+    visible: true
+    text: |
+      // You can experiment here, it won’t be checked
+      
+      fun main(args: Array<String>) {
+        // put your code here
+      }
+    learner_created: false
+feedback_link: https://hyperskill.org/learn/step/20957#comment
+status: Solved
+record: -1
+local_check: false

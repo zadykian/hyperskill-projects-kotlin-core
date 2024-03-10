@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="GradleMigrationSettings" migrationVersion="1" />
+  <component name="GradleSettings">
+    <option name="linkedExternalProjectsSettings">
+      <GradleProjectSettings>
+        <option name="delegatedBuild" value="false" />
+        <option name="distributionType" value="WRAPPED" />
+        <option name="externalProjectPath" value="$PROJECT_DIR$" />
+        <option name="gradleJvm" value="#JAVA_INTERNAL" />
+        <option name="modules">
+          <set>
+            <option value="$PROJECT_DIR$" />
+            <option value="$PROJECT_DIR$/Topics/Lambda with receiver/Advantages of lambdas with receivers" />
+            <option value="$PROJECT_DIR$/Topics/Lambda with receiver/Creating a Tag Builder" />
+            <option value="$PROJECT_DIR$/Topics/Lambda with receiver/Test if a number is divisible" />
+            <option value="$PROJECT_DIR$/Topics/Lambda with receiver/Theory" />
+            <option value="$PROJECT_DIR$/Topics/Lambda with receiver/Working with Accounts" />
+            <option value="$PROJECT_DIR$/Topics/Loops  repeat statement/Print a string exactly ten times" />
+            <option value="$PROJECT_DIR$/Topics/Loops  repeat statement/Theory" />
+            <option value="$PROJECT_DIR$/Unit Converter/task" />
+            <option value="$PROJECT_DIR$/Unit Converter/task/build/classes/kotlin" />
+            <option value="$PROJECT_DIR$/Unit Converter/task/build/reports/tests" />
+            <option value="$PROJECT_DIR$/Unit Converter/task/build/test-results" />
+            <option value="$PROJECT_DIR$/Unit Converter/task/build/tmp" />
+            <option value="$PROJECT_DIR$/util" />
+          </set>
+        </option>
+      </GradleProjectSettings>
+    </option>
+  </component>
+</project>

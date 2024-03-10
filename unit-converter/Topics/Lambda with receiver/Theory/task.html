@@ -1,0 +1,61 @@
+<h2>Lambda with receiver</h2>
+<div class="step-text">
+<p> </p><p>As we have seen in previous topics, <strong>functions</strong> in Kotlin are first-class citizens: we can have functions that return functions, or even take a function as a parameter. As you remember, in Kotlin you can use <strong>lambdas </strong>(function literals, or functions that are not declared but passed immediately as expressions). Thanks to lambdas, we can code the behavior of a function on the fly and use it as a function parameter. We can also store the behavior of a function as a variable. Besides, Kotlin introduces <strong>extension functions</strong>, which offer a way of extending existing classes with new functionality without using class inheritance.</p><p>In this topic, you will learn how to combine these two concepts: we'll talk about "extension lambdas", technically called "<strong>lambdas with receivers</strong>",<strong> </strong>and learn to use them in our code.</p><h5 id="receiver">Receiver</h5><p>First of all, what is a <strong>receiver</strong>? In Kotlin, every piece of code must have an associated type (or multiple types) that receives it.</p><p>In the context of extension functions, the receiver is an object instance that extends its functionality by the function. Receivers can be omitted to give you direct access to the receiver’s members. The following code shows an extension function that checks if an integer is even. It shows how we can access the integer itself, which is the receiver (<code class="language-kotlin">this</code>) we operate with:</p><pre><code class="language-kotlin">fun Int.isEven() = this % 2 == 0
+
+fun main() {
+    println("Is 2 even?: ${2.isEven()}") // true
+    println("Is 3 even?: ${3.isEven()}") // false
+}</code></pre><p>A <strong>lambda with a receiver</strong> is a way to define behavior similar to an extension function, and it uses lambda expressions to operate with some object. To convert a lambda into a lambda with a receiver, you can give one of the parameters of the lambda the special status of a receiver, which allows you to refer to its members directly without any qualifier.</p><h5 id="working-with-lambdas-with-receivers">Working with lambdas with receivers</h5><p>With lambdas with receivers, you indicate how methods are resolved in the lambda body. The receiver is an extension function type. It enables the access to the visible methods and properties of the receiver of the lambda in its body without any additional qualifier.</p><p> We can explore this concept by implementing a <code class="language-kotlin">sum</code> function with integer type.</p><pre><code class="language-kotlin">val sum: (Int, Int) -&gt; Int = { a, b -&gt; a + b }
+fun main() {
+    println(sum(1, 2)) // 3
+}</code></pre><p> We can use a lambda with a receiver to rewrite our code.</p><pre><code class="language-kotlin">val sum: Int.(Int) -&gt; Int = { a -&gt; this + a }
+
+fun main() {
+    println(sum(1, 2)) // 3
+    println(1.sum(2)) // 3
+}</code></pre><p>Function types can optionally have an additional receiver type, which is specified before the dot in the notation: <code class="language-kotlin">A.(B) -&gt; C { body }</code> represents functions that can be called on a receiver object A with a parameter B, return a value C, and perform any action in the body.</p><p>Inside the <strong>body</strong> of the function literal, you can access the members of the receiver object using the expression <code class="language-kotlin">this</code>.</p><p>We must highlight the <strong>context of the receiver</strong>. Normal lambda functions (first case) in Kotlin are as follows: a set of explicit arguments and the body of the lambda separated by an arrow: <code class="language-kotlin">(A,B) -&gt; C</code>, in this case: <code class="language-kotlin">(Int, Int) -&gt; Int</code>.</p><p>To transform it into a<strong> </strong>lambda with a receiver, we move the type parameter outside of the parentheses. It's similar both to a lambda and to an extension function, so you can combine these concepts. You can use an extension function due to the context of the receiver. We can use <code class="language-kotlin">this</code>, so we can perform <code class="language-kotlin">sum</code> over its value adding the parameter. Thus, it can be defined as  <code class="language-kotlin">A.(B) -&gt; C</code>, in this case: <code class="language-kotlin">Int.(Int)-&gt;Int</code>, where A is the receiver and we can use <code class="language-kotlin">this</code> to operate with it, see <code class="language-kotlin">sum(1,2)</code>. Also, we can use a lambda with a receiver similar to an extension function, thanks to the implicit <code class="language-kotlin">this</code>, see <code class="language-kotlin">1.sum(2)</code>.</p><p>Let’s try to generalize this example code to a code block that allows us to perform a series of operations with integers using a lambda with a receiver. We use the receiver as an extension and expect that the function with an integer will work with it in the block of the function and we will obtain an integer.</p><pre><code class="language-kotlin">// Extension function for Int, which applies function f to the current Int
+fun Int.opp(f: Int.() -&gt; Int): Int = f()
+
+fun main() {
+    // Use the opp function to multiply the number 10 by 2
+    var res = 10.opp { this.times(2) }
+    println(res) // 20
+
+    // Another way to use the opp function to add 10 to the number 10
+    // We can omit "this" as the context explicitly refers to the current Int
+    res = 10.opp { plus(10) }
+    println(res) // 20
+
+    // Yet another way to multiply the number 10 by 2 using the opp function
+    res = 10.opp { this * 2 }
+    println(res) // 20
+}</code></pre><p>As shown above, we just call the <code class="language-kotlin">f()</code> function, which is equal to <code class="language-kotlin">this.f()</code>. Again, each unqualified function call uses an instance of Integer as a function call receiver.</p><h5 id="usage-of-lambdas-with-receivers">Usage of lambdas with receivers</h5><p>Lambda expressions can be used as function literals with a receiver when the receiver type can be inferred from the context. One of the most important examples of their usage is <strong>type-safe builders</strong> or<strong> DSLs</strong>. Domain-specific languages (DSLs) allow us to easily encode complex structures using declarative syntax. The following code shows how to use type-safe builders with the <code class="language-kotlin">StringBuilder</code><strong> </strong>class, which can be applied to efficiently perform multiple string manipulation operations. For example, using the <code class="language-kotlin">append</code> method, we can append a specified character sequence; in the end, after all manipulations, we return the final string.</p><pre><code class="language-kotlin">// Safe Builder String with Lambda with receiver
+fun myString(init: StringBuilder.() -&gt; Unit): String {
+    return StringBuilder().apply(init).toString()
+}
+
+fun main() {
+    val str = myString {
+        append("Hello, ".uppercase())
+        append("World!")
+    }
+    println(str) // HELLO, World!
+}</code></pre><p>Finally, the standard library and third-party libraries extensively use lambdas with receivers to improve developer experience. This is the basis of performing DSL operations. An example can be seen in the <code class="language-kotlin">apply()</code><strong> scope function</strong>.</p><pre><code class="language-kotlin">fun MutableMap&lt;String, Any&gt;.apply(block: MutableMap&lt;String, Any&gt;.() -&gt; Unit): MutableMap&lt;String, Any&gt; {
+    block()
+    return this
+}
+
+fun main() {
+    val student: MutableMap&lt;String, Any&gt; = mutableMapOf(
+        "name" to "John",
+        "age" to 20
+    )
+
+    student.apply {
+        this["name"] = (this["name"] as String).uppercase()
+        this["age"] = (this["age"] as Int) + 1
+    }
+
+    println(student) // {name=JOHN, age=21}
+}</code></pre><p>Basically, all <code class="language-kotlin">apply</code> functions invoke the argument of an extension function type on the provided receiver and return the receiver itself.</p><h5 id="conclusion">Conclusion</h5><p>In this topic, we saw how we can take advantage of lambdas with receivers to make better and more readable program constructs. </p><p>Lambdas with receivers are great tools for generalizing a code block, which allows us to perform a series of operations or build DSLs. The benefit of using lambdas with receivers is the ability to reuse code and create abstractions or define extensions on primitive types, which lets you create a readable syntax for various kinds of literals, such as dates, or make builders for your objects.</p><p>Ready for some questions and tasks? Let's go!</p>
+</div>
