@@ -1,10 +1,23 @@
 package indigo
 
+typealias CardsOnTable = List<Card>
+typealias CardsInHand = List<Card>
+
+private class GameState(
+    val deck: Deck,
+    val cardsOnTable: CardsOnTable,
+    val currentPlayer: Player,
+    val playersHands: Map<Player, CardsInHand>
+)
+
 class Game(
     private val actionReceiver: ActionReceiver,
     private val outputWriter: (String) -> Unit
 ) {
-    fun run() = next(Deck())
+    fun run(players: List<Player>) {
+        outputWriter(Messages.GREETING)
+        next(Deck())
+    }
 
     private tailrec fun next(deck: Deck): Unit = when (val action = actionReceiver.next()) {
         is UserAction.Reset -> {
