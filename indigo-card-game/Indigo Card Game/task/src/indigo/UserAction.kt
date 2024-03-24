@@ -1,6 +1,6 @@
 package indigo
 
-abstract class UserAction private constructor() {
+sealed class UserAction private constructor() {
     object Reset : UserAction()
 
     object Shuffle : UserAction()

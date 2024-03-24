@@ -1,11 +1,9 @@
 package indigo
 
-typealias InputReader = () -> String
-typealias OutputWriter = (String) -> Unit
+class IO(val read: () -> String, val write: (String) -> Unit)
 
 fun main() {
-    val inputReader: InputReader = { readln() }
-    val outputWriter: OutputWriter = { println(it) }
-    val actionReceiver = IOActionReceiver(inputReader, outputWriter)
-    Game(actionReceiver, outputWriter).run(listOf(User(), Computer()))
+    val io = IO(read = { readln() }, write = { println(it) })
+    val actionReceiver = IOActionReceiver(io)
+    Game(actionReceiver, io).run(listOf(User(io), Computer()))
 }

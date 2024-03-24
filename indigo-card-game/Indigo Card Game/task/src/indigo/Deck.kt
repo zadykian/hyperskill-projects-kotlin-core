@@ -1,38 +1,55 @@
 package indigo
 
-data class Card(val suit: Char, val rank: String) {
-    override fun toString(): String = "$rank$suit"
+enum class Rank(val symbol: String) {
+    Ace("A"),
+    Two("2"),
+    Three("3"),
+    Four("4"),
+    Five("5"),
+    Six("6"),
+    Seven("7"),
+    Eight("8"),
+    Nine("9"),
+    Ten("10"),
+    Jack("J"),
+    Queen("Q"),
+    King("K"),
 }
 
-abstract class GetCardsResult private constructor() {
-    class Success(val retrievedCards: List<Card>, val newDeck: Deck) : GetCardsResult()
-
-    class Failure(val message: String) : GetCardsResult()
+enum class Suit(val symbol: Char) {
+    Clubs('♣'),
+    Diamonds('♦'),
+    Hearts('♥'),
+    Spades('♠'),
 }
+
+data class Card(val suit: Suit, val rank: Rank) {
+    override fun toString(): String = "${rank.symbol}${suit.symbol}"
+}
+
+data class GetCardsResult(val retrievedCards: List<Card>, val newDeck: Deck)
 
 class Deck private constructor(private val cards: List<Card>) {
-    constructor() : this(cards = orderedCards())
+    constructor() : this(cards = allCards)
 
-    fun shuffle(): Deck = Deck(this.cards.shuffled())
+    fun shuffled(): Deck = Deck(this.cards.shuffled())
 
-    fun getCards(numberOfCards: Int): GetCardsResult =
-        when {
-            numberOfCards !in 1..52 -> GetCardsResult.Failure(Messages.INVALID_NUMBER_OF_CARDS)
-            numberOfCards > cards.size -> GetCardsResult.Failure(Messages.NOT_ENOUGH_CARDS)
-            numberOfCards == cards.size -> GetCardsResult.Success(retrievedCards = cards, newDeck = emptyDeck())
-            else -> {
-                val retrievedCards = cards.subList(fromIndex = 0, toIndex = numberOfCards)
-                val leftCards = cards.subList(fromIndex = numberOfCards, toIndex = cards.size)
-                GetCardsResult.Success(retrievedCards, newDeck = Deck(cards = leftCards))
-            }
-        }
+    fun getCards(numberOfCards: Int): GetCardsResult {
+        require(numberOfCards in 1..allCards.size) { Messages.INVALID_NUMBER_OF_CARDS }
+        require(numberOfCards <= cards.size) { Messages.NOT_ENOUGH_CARDS }
+
+        val retrievedCards = cards.subList(fromIndex = 0, toIndex = numberOfCards)
+        val leftCards = cards.subList(fromIndex = numberOfCards, toIndex = cards.size)
+        return GetCardsResult(retrievedCards, newDeck = Deck(cards = leftCards))
+    }
 
     companion object {
-        private val suits = listOf('♣', '♦', '♥', '♠')
-        private val ranks = listOf("K", "Q", "J", "10", "9", "8", "7", "6", "5", "4", "3", "2", "A")
+        private val emptyDeck = Deck(emptyList())
 
-        fun emptyDeck() = Deck(emptyList())
-
-        fun orderedCards() = suits.flatMap { suit -> ranks.map { rank -> Card(suit, rank) } }
+        val allCards: List<Card> by lazy {
+            val suits = Suit.values()
+            val ranks = Rank.values()
+            suits.flatMap { suit -> ranks.asSequence().map { rank -> Card(suit, rank) } }
+        }
     }
 }

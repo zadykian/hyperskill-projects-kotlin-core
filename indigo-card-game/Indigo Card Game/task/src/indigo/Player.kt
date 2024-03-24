@@ -1,10 +1,13 @@
 package indigo
 
-interface Player {
+sealed interface Player {
+    val name: String
+        get() = this::class.simpleName!!
+
     fun chooseCard(cardsOnTable: CardsOnTable, cardsInHand: CardsInHand): Card
 }
 
-class User : Player {
+class User(private val io: IO) : Player {
     override fun chooseCard(cardsOnTable: CardsOnTable, cardsInHand: CardsInHand): Card {
         TODO("Not yet implemented")
     }
