@@ -10,17 +10,18 @@ private class GameState(
     val playersHands: Map<Player, CardsInHand>
 )
 
-class Game(
-    private val actionReceiver: ActionReceiver,
-    private val io: IO
-) {
-    fun run(players: List<Player>) {
+class Game(private val io: IO) {
+    fun run(players: List<Player>, firstPlayerSelector: (List<Player>) -> Player?) {
         io.write(Messages.GREETING)
-        val firstPlayer = selectFirstPlayer(players)
-        val (cardsOnTable, deck) = Deck().shuffled().getCards(numberOfCards = 4)
-        io.write(Messages.initialCards(cardsOnTable))
+        val firstPlayer = firstPlayerSelector(players)
+        if (firstPlayer == null) {
+            io.write(Messages.GAME_OVER)
+            return
+        }
 
-        val (playersHands, initialDeck) = giveInitialCards(players, deck)
+        val (cardsOnTable, deck) = Deck().shuffled().getCards(numberOfCards = Constants.INIT_CARDS_COUNT)
+        io.write(Messages.initialCards(cardsOnTable))
+        val (playersHands, initialDeck) = giveCards(players, deck)
 
         val initialState = GameState(
             initialDeck,
@@ -29,29 +30,10 @@ class Game(
             playersHands
         )
 
-        next(initialState)
+        next(initialState, players)
     }
 
-    private fun selectFirstPlayer(players: List<Player>): Player {
-        io.write(Messages.PLAY_FIRST_REQUEST)
-        return when (io.read().lowercase()) {
-            Answers.YES -> players.single { it is User }
-            Answers.NO -> players.single { it is Computer }
-            else -> selectFirstPlayer(players)
-        }
-    }
-
-    private fun giveInitialCards(players: List<Player>, deck: Deck): Pair<Map<Player, CardsInHand>, Deck> {
-        var currentDeck = deck
-        val playersWithCards = players.associateWith {
-            val (cards, newDeck) = currentDeck.getCards(numberOfCards = 6)
-            currentDeck = newDeck
-            cards
-        }
-        return Pair(playersWithCards, currentDeck)
-    }
-
-    private tailrec fun next(state: GameState): Unit {
+    private tailrec fun next(state: GameState, players: List<Player>) {
         io.write(Messages.onTable(state.cardsOnTable))
 
         if (state.cardsOnTable.size == Deck.allCards.size) {
@@ -59,24 +41,48 @@ class Game(
             return
         }
 
-        when (val current = state.currentPlayer) {
-            is User -> {
-                val hand = state.playersHands.getValue(current)
-                io.write(Messages.inHand(hand))
+        val (currentHands, currentDeck) =
+            if (state.playersHands.values.all { it.isEmpty() }) giveCards(players, state.deck)
+            else Pair(state.playersHands, state.deck)
 
-            }
+        val current = state.currentPlayer
+        val hand = currentHands.getValue(current)
+        val pickedCard = current.chooseCard(state.cardsOnTable, hand)
 
-            is Computer -> {
-
-            }
+        if (pickedCard == null) {
+            io.write(Messages.GAME_OVER)
+            return
         }
+
+        val nextState = GameState(
+            deck = currentDeck,
+            cardsOnTable = state.cardsOnTable + pickedCard,
+            playersHands = currentHands + (current to hand.minus(pickedCard)),
+            currentPlayer = selectNextPlayer(current, players)
+        )
+
+        next(nextState, players)
     }
 
-    private tailrec fun pickACard(cardsCount: Int): Int {
-        io.write(Messages.chooseCardRequest(cardsCount))
-        return when (val cardNumber = io.read().toIntOrNull()) {
-            in 1..cardsCount -> cardNumber!!
-            else -> pickACard(cardsCount)
+    private fun giveCards(players: List<Player>, deck: Deck): Pair<Map<Player, CardsInHand>, Deck> {
+        var currentDeck = deck
+        val playersWithCards = players.associateWith {
+            val (cards, newDeck) = currentDeck.getCards(numberOfCards = Constants.CARDS_PER_HAND)
+            currentDeck = newDeck
+            cards
         }
+        return Pair(playersWithCards, currentDeck)
     }
+
+    private fun selectNextPlayer(current: Player, allPlayers: List<Player>): Player {
+        val currentIndex = allPlayers.indexOf(current)
+        require(currentIndex != -1) { "List 'allPlayers' is expected to contain 'current'!" }
+        val nextIndex = (currentIndex + 1) % allPlayers.size
+        return allPlayers[nextIndex]
+    }
+}
+
+private object Constants {
+    const val INIT_CARDS_COUNT = 4
+    const val CARDS_PER_HAND = 6
 }

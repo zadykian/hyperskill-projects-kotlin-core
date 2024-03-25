@@ -4,6 +4,19 @@ class IO(val read: () -> String, val write: (String) -> Unit)
 
 fun main() {
     val io = IO(read = { readln() }, write = { println(it) })
-    val actionReceiver = IOActionReceiver(io)
-    Game(actionReceiver, io).run(listOf(User(io), Computer()))
+
+    fun selectFirstPlayer(players: List<Player>): Player? {
+        io.write(Messages.PLAY_FIRST_REQUEST)
+        return when (io.read().lowercase()) {
+            Answers.YES -> players.single { it is User }
+            Answers.NO -> players.single { it is Computer }
+            Answers.EXIT -> null
+            else -> selectFirstPlayer(players)
+        }
+    }
+
+    Game(io).run(
+        players = listOf(User(io), Computer(io)),
+        firstPlayerSelector = ::selectFirstPlayer
+    )
 }
