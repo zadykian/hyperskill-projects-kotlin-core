@@ -1,7 +1,7 @@
 package indigo
 
-enum class Rank(val symbol: String) {
-    Ace("A"),
+enum class Rank(val symbol: String, val points: Int = 0) {
+    Ace("A", points = 1),
     Two("2"),
     Three("3"),
     Four("4"),
@@ -10,10 +10,10 @@ enum class Rank(val symbol: String) {
     Seven("7"),
     Eight("8"),
     Nine("9"),
-    Ten("10"),
-    Jack("J"),
-    Queen("Q"),
-    King("K"),
+    Ten("10", points = 1),
+    Jack("J", points = 1),
+    Queen("Q", points = 1),
+    King("K", points = 1),
 }
 
 enum class Suit(val symbol: Char) {
@@ -23,7 +23,7 @@ enum class Suit(val symbol: Char) {
     Spades('♠'),
 }
 
-class Card(private val suit: Suit, private val rank: Rank) {
+class Card(val suit: Suit, val rank: Rank) {
     override fun toString(): String = "${rank.symbol}${suit.symbol}"
 }
 

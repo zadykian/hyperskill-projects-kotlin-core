@@ -11,9 +11,9 @@ object Messages {
 
     fun initialCards(cards: Iterable<Card>) = "Initial cards on the table: ${cards.joinToString(separator = " ")}"
 
-    fun onTable(cards: CardsOnTable) = "${cards.size} cards on the table, and the top card is ${cards.last()}"
+    fun onTable(cards: List<Card>) = "${cards.size} cards on the table, and the top card is ${cards.last()}"
 
-    fun inHand(cards: CardsInHand): String {
+    fun inHand(cards: List<Card>): String {
         val asStringWithIndices = cards.withIndex().joinToString(separator = " ") { "${it.index + 1})${it.value}" }
         return "Cards in hand: $asStringWithIndices"
     }
@@ -21,6 +21,8 @@ object Messages {
     fun chooseCardRequest(cardsCount: Int) = "Choose a card to play (1-$cardsCount):"
 
     fun cardPlayed(player: Player, card: Card) = "${player.name} plays $card"
+
+    fun playerWins(player: Player) = "${player.name} wins cards"
 }
 
 object Answers {

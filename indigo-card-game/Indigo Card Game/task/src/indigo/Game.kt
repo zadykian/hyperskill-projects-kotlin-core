@@ -1,13 +1,17 @@
 package indigo
 
-typealias CardsOnTable = List<Card>
-typealias CardsInHand = List<Card>
+class PlayerState(
+    val cardsInHand: List<Card>,
+    val score: Int = 0,
+    val wonCardsCount: Int = 0
+)
 
 private class GameState(
     val deck: Deck,
-    val cardsOnTable: CardsOnTable,
+    val cardsOnTable: List<Card>,
     val currentPlayer: Player,
-    val playersHands: Map<Player, CardsInHand>
+    val playersState: Map<Player, PlayerState>,
+    val lastCardWinner: Player? = null
 )
 
 class Game(private val io: IO) {
@@ -19,15 +23,17 @@ class Game(private val io: IO) {
             return
         }
 
-        val (cardsOnTable, deck) = Deck().shuffled().getCards(numberOfCards = Constants.INIT_CARDS_COUNT)
+        val (cardsOnTable, deck) = Deck().shuffled().getCards(numberOfCards = INIT_CARDS_COUNT)
         io.write(Messages.initialCards(cardsOnTable))
-        val (playersHands, initialDeck) = giveCards(players, deck)
+        val (cardsPerPlayer, initialDeck) = dealCards(deck, players.size)
 
         val initialState = GameState(
             initialDeck,
             cardsOnTable,
             firstPlayer,
-            playersHands
+            playersState = players
+                .zip(cardsPerPlayer)
+                .associate { pair -> Pair(pair.first, PlayerState(pair.second)) }
         )
 
         next(initialState, players)
@@ -43,8 +49,8 @@ class Game(private val io: IO) {
         }
 
         val (currentHands, currentDeck) =
-            if (state.playersHands.values.all { it.isEmpty() }) giveCards(allPlayers, state.deck)
-            else Pair(state.playersHands, state.deck)
+            if (state.playersState.values.all { it.cardsInHand.isEmpty() }) dealCards(state.deck, allPlayers.size)
+            else Pair(state.playersState, state.deck)
 
         val currentPlayer = state.currentPlayer
         val hand = currentHands.getValue(currentPlayer)
@@ -55,24 +61,31 @@ class Game(private val io: IO) {
             return
         }
 
+        val playerWonCards = state.cardsOnTable.last().run { rank == pickedCard.rank || suit == pickedCard.suit }
+
+
         val nextState = GameState(
             deck = currentDeck,
             cardsOnTable = state.cardsOnTable + pickedCard,
-            playersHands = currentHands + (currentPlayer to hand.minus(pickedCard)),
+            playersState = currentHands + (currentPlayer to hand.minus(pickedCard)),
             currentPlayer = selectNextPlayer(currentPlayer, allPlayers)
         )
 
         next(nextState, allPlayers)
     }
 
-    private fun giveCards(players: List<Player>, deck: Deck): Pair<Map<Player, CardsInHand>, Deck> {
-        var currentDeck = deck
-        val playersWithCards = players.associateWith {
-            val (cards, newDeck) = currentDeck.getCards(numberOfCards = Constants.CARDS_PER_HAND)
-            currentDeck = newDeck
-            cards
-        }
-        return Pair(playersWithCards, currentDeck)
+    private fun dealCards(deck: Deck, playersCount: Int): Pair<List<List<Card>>, Deck> {
+        val cardsWithDecks = generateSequence(
+            seed = Pair(emptyList<Card>(), deck)
+        ) { it.second.getCards(numberOfCards = CARDS_PER_HAND) }
+            .drop(1)
+            .take(playersCount)
+            .toList()
+
+        return Pair(
+            cardsWithDecks.map { it.first },
+            cardsWithDecks.last().second
+        )
     }
 
     private fun selectNextPlayer(current: Player, allPlayers: List<Player>): Player {
@@ -81,9 +94,9 @@ class Game(private val io: IO) {
         val nextIndex = (currentIndex + 1) % allPlayers.size
         return allPlayers[nextIndex]
     }
-}
 
-private object Constants {
-    const val INIT_CARDS_COUNT = 4
-    const val CARDS_PER_HAND = 6
+    companion object {
+        const val INIT_CARDS_COUNT = 4
+        const val CARDS_PER_HAND = 6
+    }
 }

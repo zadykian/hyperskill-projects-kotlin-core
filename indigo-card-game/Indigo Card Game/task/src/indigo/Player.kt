@@ -4,11 +4,11 @@ sealed interface Player {
     val name: String
         get() = this::class.simpleName!!
 
-    fun chooseCard(cardsOnTable: CardsOnTable, cardsInHand: CardsInHand): Card?
+    fun chooseCard(cardsOnTable: List<Card>, cardsInHand: List<Card>): Card?
 }
 
 class User(private val io: IO) : Player {
-    override fun chooseCard(cardsOnTable: CardsOnTable, cardsInHand: CardsInHand): Card? {
+    override fun chooseCard(cardsOnTable: List<Card>, cardsInHand: List<Card>): Card? {
         io.write(Messages.inHand(cardsInHand))
         return pickCardNumber(cardsInHand.size)?.let { cardsInHand[it - 1] }
     }
@@ -29,7 +29,7 @@ class User(private val io: IO) : Player {
 }
 
 class Computer(private val io: IO) : Player {
-    override fun chooseCard(cardsOnTable: CardsOnTable, cardsInHand: CardsInHand): Card {
+    override fun chooseCard(cardsOnTable: List<Card>, cardsInHand: List<Card>): Card {
         val pickedCard = cardsInHand.first()
         io.write(Messages.cardPlayed(this, pickedCard))
         return pickedCard
