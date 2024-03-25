@@ -11,9 +11,11 @@ object Messages {
 
     fun initialCards(cards: Iterable<Card>) = "Initial cards on the table: ${cards.joinToString(separator = " ")}"
 
-    fun onTable(cards: List<Card>) = "${cards.size} cards on the table, and the top card is ${cards.last()}"
+    fun cardsOnTable(cards: List<Card>) =
+        if (cards.isNotEmpty()) "${cards.size} cards on the table, and the top card is ${cards.last()}"
+        else "No cards on the table"
 
-    fun inHand(cards: List<Card>): String {
+    fun cardsInHand(cards: List<Card>): String {
         val asStringWithIndices = cards.withIndex().joinToString(separator = " ") { "${it.index + 1})${it.value}" }
         return "Cards in hand: $asStringWithIndices"
     }

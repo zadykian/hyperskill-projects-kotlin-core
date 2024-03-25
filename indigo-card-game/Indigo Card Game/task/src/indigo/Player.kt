@@ -9,7 +9,7 @@ sealed interface Player {
 
 class User(private val io: IO) : Player {
     override fun chooseCard(cardsOnTable: List<Card>, cardsInHand: List<Card>): Card? {
-        io.write(Messages.inHand(cardsInHand))
+        io.write(Messages.cardsInHand(cardsInHand))
         return pickCardNumber(cardsInHand.size)?.let { cardsInHand[it - 1] }
     }
 

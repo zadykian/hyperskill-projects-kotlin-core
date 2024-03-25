@@ -30,6 +30,8 @@ class Card(val suit: Suit, val rank: Rank) {
 class Deck private constructor(private val cards: List<Card>) {
     constructor() : this(cards = allCards)
 
+    fun isEmpty() = cards.isEmpty()
+
     fun shuffled(): Deck = Deck(this.cards.shuffled())
 
     fun getCards(numberOfCards: Int): Pair<List<Card>, Deck> {

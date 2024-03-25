@@ -1,6 +1,6 @@
 package indigo
 
-class PlayerState(
+data class PlayerState(
     val cardsInHand: List<Card>,
     val score: Int = 0,
     val wonCardsCount: Int = 0
@@ -12,7 +12,9 @@ private class GameState(
     val currentPlayer: Player,
     val playersState: Map<Player, PlayerState>,
     val lastCardWinner: Player? = null
-)
+) {
+    fun handsAreEmpty() = playersState.values.all { it.cardsInHand.isEmpty() }
+}
 
 class Game(private val io: IO) {
     fun run(players: List<Player>, firstPlayerSelector: (List<Player>) -> Player?) {
@@ -41,20 +43,16 @@ class Game(private val io: IO) {
 
     private tailrec fun next(state: GameState, allPlayers: List<Player>) {
         io.write(Messages.TURN_SEPARATOR)
-        io.write(Messages.onTable(state.cardsOnTable))
+        io.write(Messages.cardsOnTable(state.cardsOnTable))
 
-        if (state.cardsOnTable.size == Deck.allCards.size) {
-            io.write(Messages.GAME_OVER)
+        if (state.handsAreEmpty() && state.deck.isEmpty()) {
+            terminate(state)
             return
         }
 
-        val (currentHands, currentDeck) =
-            if (state.playersState.values.all { it.cardsInHand.isEmpty() }) dealCards(state.deck, allPlayers.size)
-            else Pair(state.playersState, state.deck)
-
-        val currentPlayer = state.currentPlayer
-        val hand = currentHands.getValue(currentPlayer)
-        val pickedCard = currentPlayer.chooseCard(state.cardsOnTable, hand)
+        val (currentPlayersState, currentDeck) = dealCardsIfEmpty(state)
+        val playerState = currentPlayersState.getValue(state.currentPlayer)
+        val pickedCard = state.currentPlayer.chooseCard(state.cardsOnTable, playerState.cardsInHand)
 
         if (pickedCard == null) {
             io.write(Messages.GAME_OVER)
@@ -63,15 +61,41 @@ class Game(private val io: IO) {
 
         val playerWonCards = state.cardsOnTable.last().run { rank == pickedCard.rank || suit == pickedCard.suit }
 
+        if (playerWonCards) {
+            io.write(Messages.playerWins(state.currentPlayer))
+            // todo
+        }
 
         val nextState = GameState(
             deck = currentDeck,
             cardsOnTable = state.cardsOnTable + pickedCard,
-            playersState = currentHands + (currentPlayer to hand.minus(pickedCard)),
-            currentPlayer = selectNextPlayer(currentPlayer, allPlayers)
+            playersState = currentHands + (state.currentPlayer to playerState.minus(pickedCard)),
+            currentPlayer = selectNextPlayer(state.currentPlayer, allPlayers)
         )
 
         next(nextState, allPlayers)
+    }
+
+    private fun terminate(finalState: GameState) {
+        io.write(Messages.GAME_OVER)
+        TODO()
+    }
+
+    private fun dealCardsIfEmpty(state: GameState): Pair<Map<Player, PlayerState>, Deck> {
+        if (!state.handsAreEmpty()) {
+            return Pair(state.playersState, state.deck)
+        }
+
+        val (dealtCards, newDeck) = dealCards(state.deck, state.playersState.size)
+
+        val playersState = state
+            .playersState
+            .asSequence()
+            .zip(dealtCards.asSequence())
+            .map { Pair(it.first.key, it.first.value.copy(cardsInHand = it.second)) }
+            .toMap()
+
+        return Pair(playersState, newDeck)
     }
 
     private fun dealCards(deck: Deck, playersCount: Int): Pair<List<List<Card>>, Deck> {
