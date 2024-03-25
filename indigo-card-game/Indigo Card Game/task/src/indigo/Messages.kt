@@ -3,6 +3,7 @@ package indigo
 object Messages {
     const val GREETING = "Indigo Card Game"
     const val PLAY_FIRST_REQUEST = "Play first?"
+    const val TURN_SEPARATOR = ""
     const val GAME_OVER = "Game Over"
 
     const val INVALID_NUMBER_OF_CARDS = "Invalid number of cards."

@@ -34,7 +34,7 @@ class Game(private val io: IO) {
     }
 
     private tailrec fun next(state: GameState, allPlayers: List<Player>) {
-        io.write("")
+        io.write(Messages.TURN_SEPARATOR)
         io.write(Messages.onTable(state.cardsOnTable))
 
         if (state.cardsOnTable.size == Deck.allCards.size) {
