@@ -33,7 +33,8 @@ class Game(private val io: IO) {
         next(initialState, players)
     }
 
-    private tailrec fun next(state: GameState, players: List<Player>) {
+    private tailrec fun next(state: GameState, allPlayers: List<Player>) {
+        io.write("")
         io.write(Messages.onTable(state.cardsOnTable))
 
         if (state.cardsOnTable.size == Deck.allCards.size) {
@@ -42,12 +43,12 @@ class Game(private val io: IO) {
         }
 
         val (currentHands, currentDeck) =
-            if (state.playersHands.values.all { it.isEmpty() }) giveCards(players, state.deck)
+            if (state.playersHands.values.all { it.isEmpty() }) giveCards(allPlayers, state.deck)
             else Pair(state.playersHands, state.deck)
 
-        val current = state.currentPlayer
-        val hand = currentHands.getValue(current)
-        val pickedCard = current.chooseCard(state.cardsOnTable, hand)
+        val currentPlayer = state.currentPlayer
+        val hand = currentHands.getValue(currentPlayer)
+        val pickedCard = currentPlayer.chooseCard(state.cardsOnTable, hand)
 
         if (pickedCard == null) {
             io.write(Messages.GAME_OVER)
@@ -57,11 +58,11 @@ class Game(private val io: IO) {
         val nextState = GameState(
             deck = currentDeck,
             cardsOnTable = state.cardsOnTable + pickedCard,
-            playersHands = currentHands + (current to hand.minus(pickedCard)),
-            currentPlayer = selectNextPlayer(current, players)
+            playersHands = currentHands + (currentPlayer to hand.minus(pickedCard)),
+            currentPlayer = selectNextPlayer(currentPlayer, allPlayers)
         )
 
-        next(nextState, players)
+        next(nextState, allPlayers)
     }
 
     private fun giveCards(players: List<Player>, deck: Deck): Pair<Map<Player, CardsInHand>, Deck> {

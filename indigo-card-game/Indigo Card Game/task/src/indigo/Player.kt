@@ -10,7 +10,7 @@ sealed interface Player {
 class User(private val io: IO) : Player {
     override fun chooseCard(cardsOnTable: CardsOnTable, cardsInHand: CardsInHand): Card? {
         io.write(Messages.inHand(cardsInHand))
-        return pickCardNumber(cardsInHand.size)?.let { cardsInHand[it + 1] }
+        return pickCardNumber(cardsInHand.size)?.let { cardsInHand[it - 1] }
     }
 
     private tailrec fun pickCardNumber(cardsCount: Int): Int? {

@@ -13,7 +13,7 @@ object Messages {
     fun onTable(cards: CardsOnTable) = "${cards.size} cards on the table, and the top card is ${cards.last()}"
 
     fun inHand(cards: CardsInHand): String {
-        val asStringWithIndices = cards.withIndex().joinToString(separator = " ") { "${it.index + 1})$it.value" }
+        val asStringWithIndices = cards.withIndex().joinToString(separator = " ") { "${it.index + 1})${it.value}" }
         return "Cards in hand: $asStringWithIndices"
     }
 
