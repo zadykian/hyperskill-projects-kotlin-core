@@ -73,9 +73,10 @@ class Game(private val io: IO) {
             return onCardsLost(state, pickedCard, allPlayers)
         }
 
+        val newState = onCardsWon(state, pickedCard, allPlayers)
         io.write(Messages.playerWins(state.currentPlayer))
-        io.write(Messages.currentScore(state))
-        return onCardsWon(state, pickedCard, allPlayers)
+        io.write(Messages.currentScore(newState))
+        return newState
     }
 
     private fun onCardsWon(
