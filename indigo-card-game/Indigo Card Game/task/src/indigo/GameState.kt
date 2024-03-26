@@ -14,4 +14,6 @@ data class GameState(
     val lastCardWinner: Player? = null
 ) {
     fun handsAreEmpty() = playersState.values.all { it.cardsInHand.isEmpty() }
+
+    fun isTerminal() = handsAreEmpty() && deck.isEmpty()
 }

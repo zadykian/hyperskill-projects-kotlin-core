@@ -10,7 +10,9 @@ class Game(private val io: IO) {
         }
 
         val initialState = initialize(players, firstPlayer)
-        nextTurn(initialState, players, firstPlayer)
+        val stateSequence = generateSequence(seed = initialState) { onNextTurn(it, players) }
+        val terminalState = stateSequence.firstOrNull { it.isTerminal() }
+        terminate(terminalState, firstPlayer)
     }
 
     private fun initialize(allPlayers: List<Player>, firstPlayer: Player): GameState {
@@ -25,19 +27,16 @@ class Game(private val io: IO) {
         return GameState(initialDeck, cardsOnTable, firstPlayer, playersState)
     }
 
-    private tailrec fun nextTurn(state: GameState, allPlayers: List<Player>, firstPlayer: Player) {
+    private fun onNextTurn(state: GameState, allPlayers: List<Player>): GameState? {
         io.write(Messages.TURN_SEPARATOR)
         io.write(Messages.cardsOnTable(state.cardsOnTable))
 
-        if (state.handsAreEmpty() && state.deck.isEmpty()) {
-            terminate(state, firstPlayer)
-            return
+        if (state.isTerminal()) {
+            return state
         }
 
         if (state.handsAreEmpty()) {
-            val newState = StateTransformers.onEmptyHands(state)
-            nextTurn(newState, allPlayers, firstPlayer)
-            return
+            return onEmptyHands(state)
         }
 
         val pickedCard = state.currentPlayer.chooseCard(
@@ -45,33 +44,86 @@ class Game(private val io: IO) {
             cardsInHand = state.playersState.getValue(state.currentPlayer).cardsInHand
         )
 
-        if (pickedCard == null) {
-            io.write(Messages.GAME_OVER)
-            return
-        }
+        return pickedCard?.let { onCardPicked(state, it, allPlayers) }
+    }
 
+    private fun onEmptyHands(state: GameState): GameState {
+        val (dealtCards, newDeck) = dealCards(state.deck, state.playersState.size)
+
+        val newPlayersState = state
+            .playersState
+            .asSequence()
+            .zip(dealtCards.asSequence())
+            .map { Pair(it.first.key, it.first.value.copy(cardsInHand = it.second)) }
+            .toMap()
+
+        return state.copy(deck = newDeck, playersState = newPlayersState)
+    }
+
+    private fun onCardPicked(
+        state: GameState,
+        pickedCard: Card,
+        allPlayers: List<Player>
+    ): GameState {
         val playerWonCards = state.cardsOnTable
             .lastOrNull()
             ?.run { rank == pickedCard.rank || suit == pickedCard.suit } ?: false
 
-        val nextState = if (playerWonCards) {
-            io.write(Messages.playerWins(state.currentPlayer))
-            io.write(Messages.currentScore(state))
-            StateTransformers.onCardsWon(state, pickedCard, allPlayers)
-        } else {
-            StateTransformers.onCardsLost(state, pickedCard, allPlayers)
+        if (!playerWonCards) {
+            return onCardsLost(state, pickedCard, allPlayers)
         }
 
-        nextTurn(nextState, allPlayers, firstPlayer)
+        io.write(Messages.playerWins(state.currentPlayer))
+        io.write(Messages.currentScore(state))
+        return onCardsWon(state, pickedCard, allPlayers)
     }
 
-    private fun terminate(state: GameState, firstPlayer: Player) {
-        fun writeGameSummary(finalState: GameState) {
-            io.write(Messages.currentScore(finalState))
+    private fun onCardsWon(
+        state: GameState,
+        pickedCard: Card,
+        allPlayers: List<Player>
+    ): GameState {
+        val playerState = state.playersState.getValue(state.currentPlayer)
+        val wonCards = state.cardsOnTable + pickedCard
+
+        val newPlayerState = playerState.copy(
+            cardsInHand = playerState.cardsInHand.minus(pickedCard),
+            score = playerState.score + wonCards.sumOf { it.rank.points },
+            wonCardsCount = playerState.wonCardsCount + wonCards.size
+        )
+
+        return state.copy(
+            cardsOnTable = emptyList(),
+            playersState = state.playersState + (state.currentPlayer to newPlayerState),
+            currentPlayer = selectNextPlayer(state.currentPlayer, allPlayers)
+        )
+    }
+
+    private fun onCardsLost(
+        state: GameState,
+        pickedCard: Card,
+        allPlayers: List<Player>
+    ): GameState {
+        val oldPlayerState = state.playersState.getValue(state.currentPlayer)
+
+        val newPlayerState = oldPlayerState.copy(
+            cardsInHand = oldPlayerState.cardsInHand.minus(pickedCard),
+        )
+
+        return state.copy(
+            cardsOnTable = state.cardsOnTable + pickedCard,
+            playersState = state.playersState + (state.currentPlayer to newPlayerState),
+            currentPlayer = selectNextPlayer(state.currentPlayer, allPlayers)
+        )
+    }
+
+    private fun terminate(state: GameState?, firstPlayer: Player) {
+        fun writeGameSummary(finalState: GameState?) {
+            finalState?.let { io.write(Messages.currentScore(it)) }
             io.write(Messages.GAME_OVER)
         }
 
-        if (state.cardsOnTable.isEmpty()) {
+        if (state == null || state.cardsOnTable.isEmpty()) {
             writeGameSummary(state)
             return
         }
@@ -91,60 +143,6 @@ class Game(private val io: IO) {
         )
 
         writeGameSummary(finalState)
-    }
-
-    private object StateTransformers {
-        fun onEmptyHands(state: GameState): GameState {
-            val (dealtCards, newDeck) = dealCards(state.deck, state.playersState.size)
-
-            val newPlayersState = state
-                .playersState
-                .asSequence()
-                .zip(dealtCards.asSequence())
-                .map { Pair(it.first.key, it.first.value.copy(cardsInHand = it.second)) }
-                .toMap()
-
-            return state.copy(deck = newDeck, playersState = newPlayersState)
-        }
-
-        fun onCardsWon(
-            state: GameState,
-            pickedCard: Card,
-            allPlayers: List<Player>
-        ): GameState {
-            val playerState = state.playersState.getValue(state.currentPlayer)
-            val wonCards = state.cardsOnTable + pickedCard
-
-            val newPlayerState = playerState.copy(
-                cardsInHand = playerState.cardsInHand.minus(pickedCard),
-                score = playerState.score + wonCards.sumOf { it.rank.points },
-                wonCardsCount = playerState.wonCardsCount + wonCards.size
-            )
-
-            return state.copy(
-                cardsOnTable = emptyList(),
-                playersState = state.playersState + (state.currentPlayer to newPlayerState),
-                currentPlayer = selectNextPlayer(state.currentPlayer, allPlayers)
-            )
-        }
-
-        fun onCardsLost(
-            state: GameState,
-            pickedCard: Card,
-            allPlayers: List<Player>
-        ): GameState {
-            val oldPlayerState = state.playersState.getValue(state.currentPlayer)
-
-            val newPlayerState = oldPlayerState.copy(
-                cardsInHand = oldPlayerState.cardsInHand.minus(pickedCard),
-            )
-
-            return state.copy(
-                cardsOnTable = state.cardsOnTable + pickedCard,
-                playersState = state.playersState + (state.currentPlayer to newPlayerState),
-                currentPlayer = selectNextPlayer(state.currentPlayer, allPlayers)
-            )
-        }
     }
 
     companion object {
