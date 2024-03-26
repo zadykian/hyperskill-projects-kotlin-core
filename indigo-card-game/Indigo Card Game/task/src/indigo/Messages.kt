@@ -25,6 +25,18 @@ object Messages {
     fun cardPlayed(player: Player, card: Card) = "${player.name} plays $card"
 
     fun playerWins(player: Player) = "${player.name} wins cards"
+
+    fun currentScore(state: GameState): String {
+        fun <T> joinPlayersStats(selector: (PlayerState) -> T) =
+            state.playersState
+                .asSequence()
+                .joinToString(separator = " - ") { "${it.key.name} ${selector(it.value)}" }
+
+        return """
+            Score: ${joinPlayersStats { it.score }}
+            Cards: ${joinPlayersStats { it.wonCardsCount }}
+            """.trimIndent()
+    }
 }
 
 object Answers {

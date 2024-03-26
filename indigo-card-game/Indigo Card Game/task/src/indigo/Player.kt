@@ -1,13 +1,12 @@
 package indigo
 
-sealed interface Player {
-    val name: String
-        get() = this::class.simpleName!!
+sealed class Player(name: String? = null) {
+    val name: String = name ?: this::class.simpleName!!
 
-    fun chooseCard(cardsOnTable: List<Card>, cardsInHand: List<Card>): Card?
+    abstract fun chooseCard(cardsOnTable: List<Card>, cardsInHand: List<Card>): Card?
 }
 
-class User(private val io: IO) : Player {
+class User(private val io: IO, name: String? = null) : Player(name) {
     override fun chooseCard(cardsOnTable: List<Card>, cardsInHand: List<Card>): Card? {
         io.write(Messages.cardsInHand(cardsInHand))
         return pickCardNumber(cardsInHand.size)?.let { cardsInHand[it - 1] }
@@ -28,7 +27,7 @@ class User(private val io: IO) : Player {
     }
 }
 
-class Computer(private val io: IO) : Player {
+class Computer(private val io: IO, name: String? = null) : Player(name) {
     override fun chooseCard(cardsOnTable: List<Card>, cardsInHand: List<Card>): Card {
         val pickedCard = cardsInHand.first()
         io.write(Messages.cardPlayed(this, pickedCard))

@@ -16,7 +16,7 @@ fun main() {
     }
 
     Game(io).run(
-        players = listOf(User(io), Computer(io)),
+        players = listOf(User(io, name = "Player"), Computer(io)),
         firstPlayerSelector = ::selectFirstPlayer
     )
 }
