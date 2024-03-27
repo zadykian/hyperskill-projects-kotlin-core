@@ -183,17 +183,24 @@ object Game {
 
         val newPlayersState = state.playersState
             .plus(cardsFromTableOwner to winnerState)
-            .run {
-                val byMostCards = maxBy { it.value.wonCardsCount }
-                val stateWithBonusPoints = byMostCards.value.let { it.copy(score = it.score + MAX_CARDS_BONUS_POINTS) }
-                plus(byMostCards.key to stateWithBonusPoints)
-            }
+            .assignBonusPoints(firstPlayer)
 
         return state.copy(
             cardsOnTable = emptyList(),
             playersState = newPlayersState,
             cardWasPlayed = false,
         )
+    }
+
+    private fun Map<Player, PlayerState>.assignBonusPoints(firstPlayer: Player): Map<Player, PlayerState> {
+        val mostCardsCount = maxOf { it.value.wonCardsCount }
+
+        val byMostCards = asSequence()
+            .singleOrNull { it.value.wonCardsCount == mostCardsCount }
+            ?: entries.single { it.key == firstPlayer }
+
+        val stateWithBonusPoints = byMostCards.value.let { it.copy(score = it.score + MAX_CARDS_BONUS_POINTS) }
+        return plus(byMostCards.key to stateWithBonusPoints)
     }
 
     private fun selectNextPlayer(current: Player, allPlayers: List<Player>): Player {
