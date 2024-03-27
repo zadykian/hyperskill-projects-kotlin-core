@@ -3,6 +3,7 @@ package indigo
 object Game {
     private const val INITIAL_CARDS_COUNT = 4
     private const val CARDS_PER_HAND_COUNT = 6
+    private const val MAX_CARDS_BONUS_POINTS = 3
 
     fun run(players: List<Player>, firstPlayerSelector: (List<Player>) -> Player?, io: IO) {
         io.write(Messages.GREETING)
@@ -12,43 +13,43 @@ object Game {
             return
         }
 
-        fun beforeEach(previous: GameState) {
-            if (!previous.isInitial() && !previous.cardWasPlayed) {
-                return
-            }
-
-            io.write(Messages.TURN_SEPARATOR)
-            io.write(Messages.cardsOnTable(previous.cardsOnTable))
-        }
-
-        fun afterEach(previous: GameState, next: GameState?) {
-            if (previous.isInitial() && next != null) {
-                io.write(Messages.initialCards(next.cardsOnTable))
-            }
-
-            val winner =
-                if (previous.lastCardWinner != next?.lastCardWinner) next?.lastCardWinner
-                else null
-
-            winner?.let { io.write(Messages.playerWins(it)) }
-
-            if (winner != null || next?.isTerminal() == true) {
-                io.write(Messages.currentScore(next!!))
-            }
-
-            if (next == null || next.isTerminal()) {
-                io.write(Messages.GAME_OVER)
-            }
-        }
-
         val statesSequence = generateSequence(seed = initialize(firstPlayer)) {
-            beforeEach(previous = it)
+            beforeEach(io, previous = it)
             val nextState = makeProgress(it, players, firstPlayer)
-            afterEach(previous = it, next = nextState)
+            afterEach(io, previous = it, next = nextState)
             nextState
         }
 
         statesSequence.last()
+    }
+
+    private fun beforeEach(io: IO, previous: GameState) {
+        val isBeforeFirstTurn = previous.playersState.isEmpty() && previous.cardsOnTable.size == INITIAL_CARDS_COUNT
+        if (previous.cardWasPlayed || isBeforeFirstTurn) {
+            io.write(Messages.TURN_SEPARATOR)
+            io.write(Messages.cardsOnTable(previous.cardsOnTable))
+        }
+    }
+
+    private fun afterEach(io: IO, previous: GameState, next: GameState?) {
+        if (previous.isInitial() && next != null) {
+            io.write(Messages.initialCards(next.cardsOnTable))
+        }
+
+        val cardWinner =
+            if (next != null && next.previousPlayerWon) previous.currentPlayer
+            else null
+
+        cardWinner?.let { io.write(Messages.playerWins(it)) }
+
+        val isTerminalWithoutPreviousWinner = !previous.previousPlayerWon && next?.isTerminal() == true
+        if (cardWinner != null || isTerminalWithoutPreviousWinner) {
+            io.write(Messages.currentScore(next!!))
+        }
+
+        if (next == null || next.isTerminal()) {
+            io.write(Messages.GAME_OVER)
+        }
     }
 
     private fun initialize(firstPlayer: Player) =
@@ -110,6 +111,7 @@ object Game {
             deck = newDeck,
             playersState = newPlayersState,
             cardWasPlayed = false,
+            previousPlayerWon = false
         )
     }
 
@@ -131,7 +133,9 @@ object Game {
             cardsOnTable = emptyList(),
             playersState = state.playersState + (state.currentPlayer to newPlayerState),
             currentPlayer = selectNextPlayer(state.currentPlayer, allPlayers),
+            lastCardWinner = state.currentPlayer,
             cardWasPlayed = true,
+            previousPlayerWon = true
         )
     }
 
@@ -151,6 +155,7 @@ object Game {
             playersState = state.playersState + (state.currentPlayer to newPlayerState),
             currentPlayer = selectNextPlayer(state.currentPlayer, allPlayers),
             cardWasPlayed = true,
+            previousPlayerWon = false
         )
     }
 
@@ -172,10 +177,18 @@ object Game {
             )
         }
 
+        val newPlayersState = state.playersState
+            .plus(cardsFromTableOwner to winnerState)
+            .run {
+                val byMostCards = maxBy { it.value.wonCardsCount }
+                val stateWithBonusPoints = byMostCards.value.let { it.copy(score = it.score + MAX_CARDS_BONUS_POINTS) }
+                plus(byMostCards.key to stateWithBonusPoints)
+            }
+
         return state.copy(
             cardsOnTable = emptyList(),
-            playersState = state.playersState + (cardsFromTableOwner to winnerState),
-            cardWasPlayed = false
+            playersState = newPlayersState,
+            cardWasPlayed = false,
         )
     }
 
