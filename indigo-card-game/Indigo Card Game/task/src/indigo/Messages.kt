@@ -44,3 +44,12 @@ object Answers {
     const val NO = "no"
     const val EXIT = "exit"
 }
+
+object Errors {
+    const val UNABLE_TO_TERMINATE = "Unable to terminate the game because the players' hands and/or deck are not empty!"
+
+    const val UNKNOWN_CURRENT_PLAYER = "List 'allPlayers' is expected to contain 'current'!"
+
+    const val CURRENT_PLAYER_IS_NOT_SWITCHED =
+        "Current player should be switched between two game states to make a turn"
+}

@@ -15,8 +15,9 @@ fun main() {
         }
     }
 
-    Game(io).run(
+    Game.run(
         players = listOf(User(io, name = "Player"), Computer(io)),
-        firstPlayerSelector = ::selectFirstPlayer
+        firstPlayerSelector = ::selectFirstPlayer,
+        io
     )
 }

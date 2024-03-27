@@ -1,7 +1,22 @@
 package indigo
 
-class Game(private val io: IO) {
-    fun run(players: List<Player>, firstPlayerSelector: (List<Player>) -> Player?) {
+private class Turn(val from: GameState, val to: GameState) {
+    init {
+        require(from.currentPlayer != to.currentPlayer) { Errors.CURRENT_PLAYER_IS_NOT_SWITCHED }
+    }
+
+    val winner: Player? =
+        if (from.lastCardWinner != to.lastCardWinner) to.lastCardWinner
+        else null
+
+    val isFinal: Boolean = to.isTerminal()
+}
+
+object Game {
+    private const val INITIAL_CARDS_COUNT = 4
+    private const val CARDS_PER_HAND_COUNT = 6
+
+    fun run(players: List<Player>, firstPlayerSelector: (List<Player>) -> Player?, io: IO) {
         io.write(Messages.GREETING)
         val firstPlayer = firstPlayerSelector(players)
         if (firstPlayer == null) {
@@ -9,34 +24,54 @@ class Game(private val io: IO) {
             return
         }
 
-        val initialState = initialize(players, firstPlayer)
-        val stateSequence = generateSequence(seed = initialState) { onNextTurn(it, players) }
-        val terminalState = stateSequence.firstOrNull { it.isTerminal() }
-        terminate(terminalState, firstPlayer)
+        fun beforeEachTurn(turn: Turn) {
+            io.write(Messages.TURN_SEPARATOR)
+            io.write(Messages.cardsOnTable(turn.from.cardsOnTable))
+        }
+
+        fun afterEachTurn(turn: Turn) {
+            turn.winner?.let { io.write(Messages.playerWins(it)) }
+
+            if (turn.winner != null || turn.isFinal) {
+                io.write(Messages.currentScore(turn.to))
+            }
+
+            if (turn.isFinal) {
+                io.write(Messages.GAME_OVER)
+            }
+        }
+
+        val statesSequence = generateSequence(seed = initialize(firstPlayer, io)) {
+            makeProgress(it, players, firstPlayer)
+        }
+
+        val res = sequence<Turn> {
+
+        }
+
+        statesSequence
+            .zipWithNext { from, to -> Turn(from, to) }
+            .onEach { beforeEachTurn(it) }
+            .forEach { afterEachTurn(it) }
     }
 
-    private fun initialize(allPlayers: List<Player>, firstPlayer: Player): GameState {
-        val (cardsOnTable, deck) = Deck().shuffled().getCards(numberOfCards = INIT_CARDS_COUNT)
+    private fun initialize(firstPlayer: Player, io: IO): GameState {
+        val (cardsOnTable, deck) = Deck().shuffled().getCards(numberOfCards = INITIAL_CARDS_COUNT)
         io.write(Messages.initialCards(cardsOnTable))
-        val (cardsPerPlayer, initialDeck) = dealCards(deck, allPlayers.size)
-
-        val playersState = allPlayers
-            .zip(cardsPerPlayer)
-            .associate { pair -> Pair(pair.first, PlayerState(pair.second)) }
-
-        return GameState(initialDeck, cardsOnTable, firstPlayer, playersState)
+        return GameState(deck, cardsOnTable, firstPlayer)
     }
 
-    private fun onNextTurn(state: GameState, allPlayers: List<Player>): GameState? {
-        io.write(Messages.TURN_SEPARATOR)
-        io.write(Messages.cardsOnTable(state.cardsOnTable))
-
+    private fun makeProgress(state: GameState, allPlayers: List<Player>, firstPlayer: Player): GameState? {
         if (state.isTerminal()) {
-            return state
+            return null
+        }
+
+        if (state.handsAreEmpty() && state.deck.isEmpty()) {
+            return terminate(state, firstPlayer)
         }
 
         if (state.handsAreEmpty()) {
-            return onEmptyHands(state)
+            return dealCards(state, allPlayers)
         }
 
         val pickedCard = state.currentPlayer.chooseCard(
@@ -44,11 +79,23 @@ class Game(private val io: IO) {
             cardsInHand = state.playersState.getValue(state.currentPlayer).cardsInHand
         )
 
-        return pickedCard?.let { onCardPicked(state, it, allPlayers) }
+        return pickedCard?.let {
+            val playerWonCards = state.cardsOnTable.lastOrNull()?.run { rank == it.rank || suit == it.suit } ?: false
+            return if (playerWonCards) onCardsWon(state, it, allPlayers)
+            else onCardsLost(state, it, allPlayers)
+        }
     }
 
-    private fun onEmptyHands(state: GameState): GameState {
-        val (dealtCards, newDeck) = dealCards(state.deck, state.playersState.size)
+    private fun dealCards(state: GameState, allPlayers: List<Player>): GameState {
+        val cardsWithDecks = generateSequence(
+            seed = Pair(emptyList<Card>(), state.deck)
+        ) { it.second.getCards(numberOfCards = CARDS_PER_HAND_COUNT) }
+            .drop(1)
+            .take(allPlayers.size)
+            .toList()
+
+        val dealtCards = cardsWithDecks.map { it.first }
+        val newDeck = cardsWithDecks.last().second
 
         val newPlayersState = state
             .playersState
@@ -58,25 +105,6 @@ class Game(private val io: IO) {
             .toMap()
 
         return state.copy(deck = newDeck, playersState = newPlayersState)
-    }
-
-    private fun onCardPicked(
-        state: GameState,
-        pickedCard: Card,
-        allPlayers: List<Player>
-    ): GameState {
-        val playerWonCards = state.cardsOnTable
-            .lastOrNull()
-            ?.run { rank == pickedCard.rank || suit == pickedCard.suit } ?: false
-
-        if (!playerWonCards) {
-            return onCardsLost(state, pickedCard, allPlayers)
-        }
-
-        val newState = onCardsWon(state, pickedCard, allPlayers)
-        io.write(Messages.playerWins(state.currentPlayer))
-        io.write(Messages.currentScore(newState))
-        return newState
     }
 
     private fun onCardsWon(
@@ -118,15 +146,13 @@ class Game(private val io: IO) {
         )
     }
 
-    private fun terminate(state: GameState?, firstPlayer: Player) {
-        fun writeGameSummary(finalState: GameState?) {
-            finalState?.let { io.write(Messages.currentScore(it)) }
-            io.write(Messages.GAME_OVER)
+    private fun terminate(state: GameState, firstPlayer: Player): GameState {
+        require(state.handsAreEmpty() && state.deck.isEmpty()) {
+            Errors.UNABLE_TO_TERMINATE
         }
 
-        if (state == null || state.cardsOnTable.isEmpty()) {
-            writeGameSummary(state)
-            return
+        if (state.cardsOnTable.isEmpty()) {
+            return state
         }
 
         val cardsFromTableOwner = state.lastCardWinner ?: firstPlayer
@@ -138,37 +164,16 @@ class Game(private val io: IO) {
             )
         }
 
-        val finalState = state.copy(
+        return state.copy(
             cardsOnTable = emptyList(),
             playersState = state.playersState + (cardsFromTableOwner to winnerState)
         )
-
-        writeGameSummary(finalState)
     }
 
-    companion object {
-        const val INIT_CARDS_COUNT = 4
-        private const val CARDS_PER_HAND = 6
-
-        private fun dealCards(deck: Deck, playersCount: Int): Pair<List<List<Card>>, Deck> {
-            val cardsWithDecks = generateSequence(
-                seed = Pair(emptyList<Card>(), deck)
-            ) { it.second.getCards(numberOfCards = CARDS_PER_HAND) }
-                .drop(1)
-                .take(playersCount)
-                .toList()
-
-            return Pair(
-                cardsWithDecks.map { it.first },
-                cardsWithDecks.last().second
-            )
-        }
-
-        private fun selectNextPlayer(current: Player, allPlayers: List<Player>): Player {
-            val currentIndex = allPlayers.indexOf(current)
-            require(currentIndex != -1) { "List 'allPlayers' is expected to contain 'current'!" }
-            val nextIndex = (currentIndex + 1) % allPlayers.size
-            return allPlayers[nextIndex]
-        }
+    private fun selectNextPlayer(current: Player, allPlayers: List<Player>): Player {
+        val currentIndex = allPlayers.indexOf(current)
+        require(currentIndex != -1) { Errors.UNKNOWN_CURRENT_PLAYER }
+        val nextIndex = (currentIndex + 1) % allPlayers.size
+        return allPlayers[nextIndex]
     }
 }
