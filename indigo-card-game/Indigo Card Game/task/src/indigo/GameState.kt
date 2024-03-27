@@ -19,5 +19,8 @@ data class GameState(
 
     fun isInitial() = deck.isFull()
 
-    fun isTerminal() = handsAreEmpty() && deck.isEmpty() && cardsOnTable.isEmpty()
+    fun isTerminal() = handsAreEmpty()
+            && deck.isEmpty()
+            && cardsOnTable.isEmpty()
+            && (playersState.asSequence().sumOf { it.value.score } == Constants.totalPointsPerGame)
 }

@@ -1,10 +1,6 @@
 package indigo
 
 object Game {
-    private const val INITIAL_CARDS_COUNT = 4
-    private const val CARDS_PER_HAND_COUNT = 6
-    private const val MAX_CARDS_BONUS_POINTS = 3
-
     fun run(players: List<Player>, firstPlayerSelector: (List<Player>) -> Player?, io: IO) {
         io.write(Messages.GREETING)
         val firstPlayer = firstPlayerSelector(players)
@@ -24,7 +20,9 @@ object Game {
     }
 
     private fun beforeEach(io: IO, previous: GameState) {
-        val isBeforeFirstTurn = previous.playersState.isEmpty() && previous.cardsOnTable.size == INITIAL_CARDS_COUNT
+        val isBeforeFirstTurn =
+            previous.playersState.isEmpty() && previous.cardsOnTable.size == Constants.INITIAL_CARDS_COUNT
+
         if (previous.cardWasPlayed || isBeforeFirstTurn) {
             io.write(Messages.TURN_SEPARATOR)
             io.write(Messages.cardsOnTable(previous.cardsOnTable))
@@ -86,14 +84,14 @@ object Game {
 
     private fun placeCardsOnTable(state: GameState): GameState {
         require(state.isInitial()) { Errors.INVALID_GAME_STATE }
-        val (initialCardsOnTable, newDeck) = state.deck.getCards(numberOfCards = INITIAL_CARDS_COUNT)
+        val (initialCardsOnTable, newDeck) = state.deck.getCards(numberOfCards = Constants.INITIAL_CARDS_COUNT)
         return state.copy(deck = newDeck, cardsOnTable = initialCardsOnTable)
     }
 
     private fun dealCards(state: GameState, allPlayers: List<Player>): GameState {
         val cardsWithDecks = generateSequence(
             seed = Pair(emptyList<Card>(), state.deck)
-        ) { it.second.getCards(numberOfCards = CARDS_PER_HAND_COUNT) }
+        ) { it.second.getCards(numberOfCards = Constants.CARDS_PER_HAND_COUNT) }
             .drop(1)
             .take(allPlayers.size)
             .toList()
@@ -169,7 +167,10 @@ object Game {
         }
 
         if (state.cardsOnTable.isEmpty()) {
-            return state
+            return state.copy(
+                playersState = assignBonusPoints(state.playersState, firstPlayer),
+                cardWasPlayed = false
+            )
         }
 
         val cardsFromTableOwner = state.lastCardWinner ?: firstPlayer
@@ -183,7 +184,7 @@ object Game {
 
         val newPlayersState = state.playersState
             .plus(cardsFromTableOwner to winnerState)
-            .assignBonusPoints(firstPlayer)
+            .let { assignBonusPoints(it, firstPlayer) }
 
         return state.copy(
             cardsOnTable = emptyList(),
@@ -192,15 +193,18 @@ object Game {
         )
     }
 
-    private fun Map<Player, PlayerState>.assignBonusPoints(firstPlayer: Player): Map<Player, PlayerState> {
-        val mostCardsCount = maxOf { it.value.wonCardsCount }
+    private fun assignBonusPoints(
+        playersState: Map<Player, PlayerState>,
+        firstPlayer: Player
+    ): Map<Player, PlayerState> {
+        val mostCardsCount = playersState.maxOf { it.value.wonCardsCount }
 
-        val byMostCards = asSequence()
+        val byMostCards = playersState.asSequence()
             .singleOrNull { it.value.wonCardsCount == mostCardsCount }
-            ?: entries.single { it.key == firstPlayer }
+            ?: playersState.entries.single { it.key == firstPlayer }
 
-        val stateWithBonusPoints = byMostCards.value.let { it.copy(score = it.score + MAX_CARDS_BONUS_POINTS) }
-        return plus(byMostCards.key to stateWithBonusPoints)
+        val stateWithBonusPoints = byMostCards.value.let { it.copy(score = it.score + Constants.BONUS_POINTS) }
+        return playersState.plus(byMostCards.key to stateWithBonusPoints)
     }
 
     private fun selectNextPlayer(current: Player, allPlayers: List<Player>): Player {
