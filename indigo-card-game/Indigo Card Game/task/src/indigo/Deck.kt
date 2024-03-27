@@ -32,7 +32,9 @@ class Deck private constructor(private val cards: List<Card>) {
 
     fun isEmpty() = cards.isEmpty()
 
-    fun shuffled(): Deck = Deck(this.cards.shuffled())
+    fun isFull() = cards.size == allCards.size
+
+    fun shuffle(): Deck = Deck(this.cards.shuffled())
 
     fun getCards(numberOfCards: Int): Pair<List<Card>, Deck> {
         require(numberOfCards in 1..allCards.size) { Messages.INVALID_NUMBER_OF_CARDS }
