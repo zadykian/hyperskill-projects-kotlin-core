@@ -32,6 +32,10 @@ object Game {
     }
 
     private fun afterEach(io: IO, previous: GameState, next: GameState?) {
+        if (previous.isTerminal()) {
+            return
+        }
+
         if (previous.isInitial() && next != null) {
             io.write(Messages.initialCards(next.cardsOnTable))
         }
