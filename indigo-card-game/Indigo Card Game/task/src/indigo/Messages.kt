@@ -9,6 +9,8 @@ object Messages {
     const val INVALID_NUMBER_OF_CARDS = "Invalid number of cards."
     const val NOT_ENOUGH_CARDS = "The remaining cards are insufficient to meet the request."
 
+    fun initialCards(cards: Iterable<Card>) = "Initial cards on the table: ${cards.joinToString(separator = " ")}"
+
     fun cardsOnTable(cards: List<Card>) =
         if (cards.isNotEmpty()) "${cards.size} cards on the table, and the top card is ${cards.last()}"
         else "No cards on the table"

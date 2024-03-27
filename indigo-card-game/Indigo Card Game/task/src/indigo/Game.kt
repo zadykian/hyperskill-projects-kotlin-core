@@ -22,6 +22,10 @@ object Game {
         }
 
         fun afterEach(previous: GameState, next: GameState?) {
+            if (previous.isInitial() && next != null) {
+                io.write(Messages.initialCards(next.cardsOnTable))
+            }
+
             val winner =
                 if (previous.lastCardWinner != next?.lastCardWinner) next?.lastCardWinner
                 else null
