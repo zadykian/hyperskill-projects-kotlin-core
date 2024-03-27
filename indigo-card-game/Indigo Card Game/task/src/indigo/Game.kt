@@ -68,18 +68,7 @@ object Game {
             state.isTerminal() -> null
             state.handsAreEmpty() && state.deck.isEmpty() -> terminate(state, firstPlayer)
             state.handsAreEmpty() -> dealCards(state, allPlayers)
-            else -> {
-                val pickedCard = state.currentPlayer.chooseCard(
-                    cardsOnTable = state.cardsOnTable,
-                    cardsInHand = state.playersState.getValue(state.currentPlayer).cardsInHand
-                )
-
-                pickedCard?.let {
-                    val playerWonCards = state.cardsOnTable.lastOrNull()?.run { rank == it.rank || suit == it.suit }
-                    return if (playerWonCards == true) onCardsWon(state, it, allPlayers)
-                    else onCardsLost(state, it, allPlayers)
-                }
-            }
+            else -> pickCard(state, allPlayers)
         }
 
     private fun placeCardsOnTable(state: GameState): GameState {
@@ -115,6 +104,19 @@ object Game {
             cardWasPlayed = false,
             previousPlayerWon = false
         )
+    }
+
+    private fun pickCard(state: GameState, allPlayers: List<Player>): GameState? {
+        val pickedCard = state.currentPlayer.chooseCard(
+            cardsOnTable = state.cardsOnTable,
+            cardsInHand = state.playersState.getValue(state.currentPlayer).cardsInHand
+        )
+
+        return pickedCard?.let {
+            val playerWonCards = state.cardsOnTable.lastOrNull()?.run { rank == it.rank || suit == it.suit }
+            return if (playerWonCards == true) onCardsWon(state, it, allPlayers)
+            else onCardsLost(state, it, allPlayers)
+        }
     }
 
     private fun onCardsWon(
