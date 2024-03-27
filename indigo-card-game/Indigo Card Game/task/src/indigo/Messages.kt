@@ -9,8 +9,6 @@ object Messages {
     const val INVALID_NUMBER_OF_CARDS = "Invalid number of cards."
     const val NOT_ENOUGH_CARDS = "The remaining cards are insufficient to meet the request."
 
-    fun initialCards(cards: Iterable<Card>) = "Initial cards on the table: ${cards.joinToString(separator = " ")}"
-
     fun cardsOnTable(cards: List<Card>) =
         if (cards.isNotEmpty()) "${cards.size} cards on the table, and the top card is ${cards.last()}"
         else "No cards on the table"
@@ -46,10 +44,7 @@ object Answers {
 }
 
 object Errors {
-    const val UNABLE_TO_TERMINATE = "Unable to terminate the game because the players' hands and/or deck are not empty!"
+    const val INVALID_GAME_STATE = "Invalid game state for current operation!"
 
     const val UNKNOWN_CURRENT_PLAYER = "List 'allPlayers' is expected to contain 'current'!"
-
-    const val CURRENT_PLAYER_IS_NOT_SWITCHED =
-        "Current player should be switched between two game states to make a turn"
 }

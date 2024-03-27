@@ -11,9 +11,12 @@ data class GameState(
     val cardsOnTable: List<Card>,
     val currentPlayer: Player,
     val playersState: Map<Player, PlayerState> = emptyMap(),
-    val lastCardWinner: Player? = null
+    val cardWasPlayed: Boolean,
+    val lastCardWinner: Player? = null,
 ) {
     fun handsAreEmpty() = playersState.values.all { it.cardsInHand.isEmpty() }
+
+    fun isInitial() = deck.isFull()
 
     fun isTerminal() = handsAreEmpty() && deck.isEmpty() && cardsOnTable.isEmpty()
 }
