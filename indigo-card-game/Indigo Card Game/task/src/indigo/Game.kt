@@ -163,6 +163,13 @@ object Game {
         )
     }
 
+    private fun selectNextPlayer(current: Player, allPlayers: List<Player>): Player {
+        val currentIndex = allPlayers.indexOf(current)
+        require(currentIndex != -1) { Errors.UNKNOWN_CURRENT_PLAYER }
+        val nextIndex = (currentIndex + 1) % allPlayers.size
+        return allPlayers[nextIndex]
+    }
+
     private fun terminate(state: GameState, firstPlayer: Player): GameState {
         require(state.handsAreEmpty() && state.deck.isEmpty()) {
             Errors.INVALID_GAME_STATE
@@ -207,12 +214,5 @@ object Game {
 
         val stateWithBonusPoints = byMostCards.value.let { it.copy(score = it.score + Constants.BONUS_POINTS) }
         return playersState.plus(byMostCards.key to stateWithBonusPoints)
-    }
-
-    private fun selectNextPlayer(current: Player, allPlayers: List<Player>): Player {
-        val currentIndex = allPlayers.indexOf(current)
-        require(currentIndex != -1) { Errors.UNKNOWN_CURRENT_PLAYER }
-        val nextIndex = (currentIndex + 1) % allPlayers.size
-        return allPlayers[nextIndex]
     }
 }
