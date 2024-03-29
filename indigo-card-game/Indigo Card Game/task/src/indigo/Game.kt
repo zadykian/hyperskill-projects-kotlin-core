@@ -1,5 +1,7 @@
 package indigo
 
+import indigo.GameProceeded.*
+
 object Game {
     fun run(players: List<Player>, firstPlayerSelector: (List<Player>) -> Player?, io: IO) {
         io.write(Messages.GREETING)
@@ -10,50 +12,37 @@ object Game {
         }
 
         val initial = GameState.initial(Deck().shuffle(), firstPlayer)
+        val stateSequence = generateSequence(seed = initial) { makeProgress(it, players, firstPlayer) }
 
-        val statesSequence = generateSequence(seed = initial) {
-            beforeEach(io, previous = it)
-            val nextState = makeProgress(it, players, firstPlayer)
-            afterEach(io, previous = it, next = nextState)
-            nextState
-        }
-
-        statesSequence.last()
+        stateSequence
+            .onEach { afterEach(io, nextState = it) }
+            .last()
     }
 
-    private fun beforeEach(io: IO, previous: GameState) {
-        if (previous.parentEvent.let { it is CardWon || it is CardLost }) {
-            io.write(Messages.LINE_SEPARATOR)
-            io.write(Messages.cardsOnTable(previous.cardsOnTable))
-        }
-    }
-
-    private fun afterEach(io: IO, previous: GameState, next: GameState?) {
-        if (previous.parentEvent is GameTerminated) {
+    private fun afterEach(io: IO, nextState: GameState?) {
+        if (nextState == null) {
+            io.write(Messages.GAME_OVER)
             return
         }
 
-        if (next?.parentEvent is InitialCardsPlaced) {
-            io.write(Messages.initialCards(next.cardsOnTable))
+        val event = nextState.parentEvent
+
+        if (event is InitialCardsPlaced) {
+            io.write(Messages.initialCards(nextState.cardsOnTable))
+        }
+
+        val cardWinner = (event as? CardWon)?.playedBy
+        cardWinner?.let {
+            io.write(Messages.playerWins(it))
+        }
+
+        if (cardWinner != null || event is GameTerminated) {
+            io.write(Messages.currentScore(nextState))
+        }
+
+        if (nextState.parentEvent.let { it is InitialCardsPlaced || it is CardWon || it is CardLost }) {
             io.write(Messages.LINE_SEPARATOR)
-            io.write(Messages.cardsOnTable(next.cardsOnTable))
-        }
-
-        val cardWinner = next?.parentEvent?.let {
-            if (it is CardWon) it.playedBy
-            else null
-        }
-
-        cardWinner?.let { io.write(Messages.playerWins(it)) }
-
-        if (cardWinner != null
-            || (next?.isTerminal() == true && previous.parentEvent !is CardWon)
-        ) {
-            io.write(Messages.currentScore(next))
-        }
-
-        if (next == null || next.isTerminal()) {
-            io.write(Messages.GAME_OVER)
+            io.write(Messages.cardsOnTable(nextState.cardsOnTable))
         }
     }
 

@@ -55,4 +55,3 @@ class GameState private constructor(
         )
     }
 }
-
