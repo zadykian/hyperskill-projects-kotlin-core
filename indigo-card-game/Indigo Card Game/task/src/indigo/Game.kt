@@ -22,37 +22,32 @@ object Game {
     }
 
     private fun beforeEach(io: IO, previousState: GameState) {
-        val cardWasPlayed = previousState
-            .playersState
-            .flatMap { it.value.turnHistory }
-            .any { it.sourceStateNumber == previousState.number }
-
-        if (cardWasPlayed) {
+        if (previousState.parentEvent.let { it is CardWon || it is CardLost }) {
             io.write(Messages.LINE_SEPARATOR)
             io.write(Messages.cardsOnTable(previousState.cardsOnTable))
         }
     }
 
     private fun afterEach(io: IO, previousState: GameState, nextState: GameState?) {
-        if (previousState.isTerminal()) {
+        if (previousState.parentEvent is GameTerminated) {
             return
         }
 
-        if (previousState.isInitial() && nextState != null) {
+        if (nextState?.parentEvent is InitialCardsPlaced) {
             io.write(Messages.initialCards(nextState.cardsOnTable))
-            io.write(Messages.LINE_SEPARATOR)
-            io.write(Messages.cardsOnTable(previousState.cardsOnTable))
         }
 
-        val cardWinner =
-            if (nextState != null && nextState.previousPlayerWon) previousState.currentPlayer
+        val cardWinner = nextState?.parentEvent?.let {
+            if (it is CardWon) it.playedBy
             else null
+        }
 
         cardWinner?.let { io.write(Messages.playerWins(it)) }
 
-        val isTerminalWithoutPreviousWinner = !previousState.previousPlayerWon && nextState?.isTerminal() == true
-        if (cardWinner != null || isTerminalWithoutPreviousWinner) {
-            io.write(Messages.currentScore(nextState!!))
+        if (cardWinner != null
+            || (nextState?.isTerminal() == true && previousState.parentEvent !is CardWon)
+        ) {
+            io.write(Messages.currentScore(nextState))
         }
 
         if (nextState == null || nextState.isTerminal()) {
@@ -72,7 +67,8 @@ object Game {
     private fun placeCardsOnTable(state: GameState): GameState {
         require(state.isInitial()) { Errors.INVALID_GAME_STATE }
         val (initialCardsOnTable, newDeck) = state.deck.getCards(numberOfCards = Constants.INITIAL_CARDS_COUNT)
-        return state.next(deck = newDeck, cardsOnTable = initialCardsOnTable)
+        val event = InitialCardsPlaced(previous = state)
+        return state.next(parentEvent = event, deck = newDeck, cardsOnTable = initialCardsOnTable)
     }
 
     private fun dealCards(state: GameState, allPlayers: List<Player>): GameState {
@@ -97,8 +93,9 @@ object Game {
             }
 
         return state.next(
+            parentEvent = CardsDealt(previous = state),
             deck = newDeck,
-            playersState = newPlayersState,
+            playersState = newPlayersState
         )
     }
 
@@ -128,12 +125,12 @@ object Game {
                 cardsInHand = cardsInHand.minus(pickedCard),
                 score = score + wonCards.sumOf { it.rank.points },
                 wonCardsCount = wonCardsCount + wonCards.size,
-                turnHistory = turnHistory + TurnHistoryEntry(sourceStateNumber = state.number, wasWon = true)
             )
         }
 
         return state.run {
             next(
+                parentEvent = CardWon(previous = this),
                 cardsOnTable = emptyList(),
                 playersState = playersState + (currentPlayer to newPlayerState),
                 currentPlayer = selectNextPlayer(currentPlayer, allPlayers),
@@ -148,15 +145,13 @@ object Game {
     ): GameState {
         val oldPlayerState = state.playersState.getValue(state.currentPlayer)
 
-        val newPlayerState = oldPlayerState.run {
-            copy(
-                cardsInHand = cardsInHand.minus(pickedCard),
-                turnHistory = turnHistory + TurnHistoryEntry(sourceStateNumber = state.number, wasWon = false)
-            )
-        }
+        val newPlayerState = oldPlayerState.copy(
+            cardsInHand = oldPlayerState.cardsInHand.minus(pickedCard),
+        )
 
         return state.run {
             next(
+                parentEvent = CardLost(previous = this),
                 cardsOnTable = cardsOnTable + pickedCard,
                 playersState = playersState + (currentPlayer to newPlayerState),
                 currentPlayer = selectNextPlayer(currentPlayer, allPlayers),
@@ -178,15 +173,15 @@ object Game {
 
         if (state.cardsOnTable.isEmpty()) {
             return state.next(
+                parentEvent = GameTerminated(previous = state),
                 playersState = assignBonusPoints(state.playersState, firstPlayer),
             )
         }
 
         val cardsFromTableOwner = state
-            .playersState
-            .filter { it.value.wonCardsCount > 0 }
-            .maxByOrNull { it.value.turnHistory.last { entry -> entry.wasWon }.sourceStateNumber }?.key
-            ?: firstPlayer
+            .parentEvents()
+            .filterIsInstance<CardWon>()
+            .firstOrNull()?.playedBy ?: firstPlayer
 
         val winnerState = state.playersState.getValue(cardsFromTableOwner).run {
             copy(
@@ -200,6 +195,7 @@ object Game {
             .let { assignBonusPoints(it, firstPlayer) }
 
         return state.next(
+            parentEvent = GameTerminated(previous = state),
             cardsOnTable = emptyList(),
             playersState = newPlayersState,
         )

@@ -1,17 +1,19 @@
 package indigo
 
-// todo
+sealed interface GameEvent
 
-sealed interface GameEventKind
+object GameCreated : GameEvent
 
-object InitialCardsPlaced : GameEventKind
+open class GameProceeded(val previous: GameState) : GameEvent
 
-object CardsAreDealt : GameEventKind
+class InitialCardsPlaced(previous: GameState) : GameProceeded(previous)
 
-class CardIsPlayed(val playedBy: Player, val isWon: Boolean) : GameEventKind
+class CardsDealt(previous: GameState) : GameProceeded(previous)
 
-class GameEvent(
-    val previousState: GameState,
-    val nextState: GameState,
-    val eventKind: GameEventKind,
-)
+class CardWon(previous: GameState) : GameProceeded(previous) {
+    val playedBy = previous.currentPlayer
+}
+
+class CardLost(previous: GameState) : GameProceeded(previous)
+
+class GameTerminated(val previous: GameState) : GameEvent
