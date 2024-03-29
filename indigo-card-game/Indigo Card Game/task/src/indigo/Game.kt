@@ -5,6 +5,7 @@ import indigo.GameProceeded.*
 object Game {
     fun run(players: List<Player>, firstPlayerSelector: (List<Player>) -> Player?, io: IO) {
         io.write(Messages.GREETING)
+
         val firstPlayer = firstPlayerSelector(players)
         if (firstPlayer == null) {
             io.write(Messages.GAME_OVER)
@@ -17,14 +18,11 @@ object Game {
         stateSequence
             .onEach { afterEach(io, nextState = it) }
             .last()
+
+        io.write(Messages.GAME_OVER)
     }
 
-    private fun afterEach(io: IO, nextState: GameState?) {
-        if (nextState == null) {
-            io.write(Messages.GAME_OVER)
-            return
-        }
-
+    private fun afterEach(io: IO, nextState: GameState) {
         val event = nextState.parentEvent
 
         if (event is InitialCardsPlaced) {
