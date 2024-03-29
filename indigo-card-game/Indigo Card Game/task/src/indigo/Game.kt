@@ -12,34 +12,34 @@ object Game {
         val initial = GameState.initial(Deck().shuffle(), firstPlayer)
 
         val statesSequence = generateSequence(seed = initial) {
-            beforeEach(io, previousState = it)
+            beforeEach(io, previous = it)
             val nextState = makeProgress(it, players, firstPlayer)
-            afterEach(io, previousState = it, nextState = nextState)
+            afterEach(io, previous = it, next = nextState)
             nextState
         }
 
         statesSequence.last()
     }
 
-    private fun beforeEach(io: IO, previousState: GameState) {
-        if (previousState.parentEvent.let { it is CardWon || it is CardLost }) {
+    private fun beforeEach(io: IO, previous: GameState) {
+        if (previous.parentEvent.let { it is CardWon || it is CardLost }) {
             io.write(Messages.LINE_SEPARATOR)
-            io.write(Messages.cardsOnTable(previousState.cardsOnTable))
+            io.write(Messages.cardsOnTable(previous.cardsOnTable))
         }
     }
 
-    private fun afterEach(io: IO, previousState: GameState, nextState: GameState?) {
-        if (previousState.parentEvent is GameTerminated) {
+    private fun afterEach(io: IO, previous: GameState, next: GameState?) {
+        if (previous.parentEvent is GameTerminated) {
             return
         }
 
-        if (nextState?.parentEvent is InitialCardsPlaced) {
-            io.write(Messages.initialCards(nextState.cardsOnTable))
+        if (next?.parentEvent is InitialCardsPlaced) {
+            io.write(Messages.initialCards(next.cardsOnTable))
             io.write(Messages.LINE_SEPARATOR)
-            io.write(Messages.cardsOnTable(nextState.cardsOnTable))
+            io.write(Messages.cardsOnTable(next.cardsOnTable))
         }
 
-        val cardWinner = nextState?.parentEvent?.let {
+        val cardWinner = next?.parentEvent?.let {
             if (it is CardWon) it.playedBy
             else null
         }
@@ -47,12 +47,12 @@ object Game {
         cardWinner?.let { io.write(Messages.playerWins(it)) }
 
         if (cardWinner != null
-            || (nextState?.isTerminal() == true && previousState.parentEvent !is CardWon)
+            || (next?.isTerminal() == true && previous.parentEvent !is CardWon)
         ) {
-            io.write(Messages.currentScore(nextState))
+            io.write(Messages.currentScore(next))
         }
 
-        if (nextState == null || nextState.isTerminal()) {
+        if (next == null || next.isTerminal()) {
             io.write(Messages.GAME_OVER)
         }
     }
