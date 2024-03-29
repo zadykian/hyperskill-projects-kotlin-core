@@ -23,24 +23,30 @@ object Game {
     }
 
     private fun afterEach(io: IO, nextState: GameState) {
-        val event = nextState.parentEvent
-
-        if (event is InitialCardsPlaced) {
-            io.write(Messages.initialCards(nextState.cardsOnTable))
-        }
-
-        val cardWinner = (event as? CardWon)?.playedBy
-        cardWinner?.let {
-            io.write(Messages.playerWins(it))
-        }
-
-        if (cardWinner != null || event is GameTerminated) {
-            io.write(Messages.currentScore(nextState))
-        }
-
-        if (nextState.parentEvent.let { it is InitialCardsPlaced || it is CardWon || it is CardLost }) {
+        fun writeCardsOnTable() {
             io.write(Messages.LINE_SEPARATOR)
             io.write(Messages.cardsOnTable(nextState.cardsOnTable))
+        }
+
+        fun writeCurrentScore() = io.write(Messages.currentScore(nextState))
+
+        when (val event = nextState.parentEvent) {
+            is InitialCardsPlaced -> {
+                io.write(Messages.initialCards(nextState.cardsOnTable))
+                writeCardsOnTable()
+            }
+
+            is CardWon -> {
+                io.write(Messages.playerWins(event.playedBy))
+                writeCurrentScore()
+                writeCardsOnTable()
+            }
+
+            is CardLost -> writeCardsOnTable()
+
+            is GameTerminated -> writeCurrentScore()
+
+            else -> {}
         }
     }
 
