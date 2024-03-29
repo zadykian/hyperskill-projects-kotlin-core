@@ -35,6 +35,8 @@ object Game {
 
         if (nextState?.parentEvent is InitialCardsPlaced) {
             io.write(Messages.initialCards(nextState.cardsOnTable))
+            io.write(Messages.LINE_SEPARATOR)
+            io.write(Messages.cardsOnTable(previousState.cardsOnTable))
         }
 
         val cardWinner = nextState?.parentEvent?.let {
