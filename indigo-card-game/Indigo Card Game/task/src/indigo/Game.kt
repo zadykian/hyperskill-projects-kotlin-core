@@ -9,58 +9,56 @@ object Game {
             return
         }
 
-        val statesSequence = generateSequence(seed = initialize(firstPlayer)) {
-            beforeEach(io, previous = it)
+        val initial = GameState.initial(Deck().shuffle(), firstPlayer)
+
+        val statesSequence = generateSequence(seed = initial) {
+            beforeEach(io, previousState = it)
             val nextState = makeProgress(it, players, firstPlayer)
-            afterEach(io, previous = it, next = nextState)
+            afterEach(io, previousState = it, nextState = nextState)
             nextState
         }
 
         statesSequence.last()
     }
 
-    private fun beforeEach(io: IO, previous: GameState) {
-        val isBeforeFirstTurn =
-            previous.playersState.isEmpty() && previous.cardsOnTable.size == Constants.INITIAL_CARDS_COUNT
+    private fun beforeEach(io: IO, previousState: GameState) {
+        val cardWasPlayed = previousState
+            .playersState
+            .flatMap { it.value.turnHistory }
+            .any { it.sourceStateNumber == previousState.number }
 
-        if (previous.cardWasPlayed || isBeforeFirstTurn) {
-            io.write(Messages.TURN_SEPARATOR)
-            io.write(Messages.cardsOnTable(previous.cardsOnTable))
+        if (cardWasPlayed) {
+            io.write(Messages.LINE_SEPARATOR)
+            io.write(Messages.cardsOnTable(previousState.cardsOnTable))
         }
     }
 
-    private fun afterEach(io: IO, previous: GameState, next: GameState?) {
-        if (previous.isTerminal()) {
+    private fun afterEach(io: IO, previousState: GameState, nextState: GameState?) {
+        if (previousState.isTerminal()) {
             return
         }
 
-        if (previous.isInitial() && next != null) {
-            io.write(Messages.initialCards(next.cardsOnTable))
+        if (previousState.isInitial() && nextState != null) {
+            io.write(Messages.initialCards(nextState.cardsOnTable))
+            io.write(Messages.LINE_SEPARATOR)
+            io.write(Messages.cardsOnTable(previousState.cardsOnTable))
         }
 
         val cardWinner =
-            if (next != null && next.previousPlayerWon) previous.currentPlayer
+            if (nextState != null && nextState.previousPlayerWon) previousState.currentPlayer
             else null
 
         cardWinner?.let { io.write(Messages.playerWins(it)) }
 
-        val isTerminalWithoutPreviousWinner = !previous.previousPlayerWon && next?.isTerminal() == true
+        val isTerminalWithoutPreviousWinner = !previousState.previousPlayerWon && nextState?.isTerminal() == true
         if (cardWinner != null || isTerminalWithoutPreviousWinner) {
-            io.write(Messages.currentScore(next!!))
+            io.write(Messages.currentScore(nextState!!))
         }
 
-        if (next == null || next.isTerminal()) {
+        if (nextState == null || nextState.isTerminal()) {
             io.write(Messages.GAME_OVER)
         }
     }
-
-    private fun initialize(firstPlayer: Player) =
-        GameState(
-            deck = Deck().shuffle(),
-            cardsOnTable = emptyList(),
-            currentPlayer = firstPlayer,
-            cardWasPlayed = false
-        )
 
     private fun makeProgress(state: GameState, allPlayers: List<Player>, firstPlayer: Player) =
         when {
@@ -74,7 +72,7 @@ object Game {
     private fun placeCardsOnTable(state: GameState): GameState {
         require(state.isInitial()) { Errors.INVALID_GAME_STATE }
         val (initialCardsOnTable, newDeck) = state.deck.getCards(numberOfCards = Constants.INITIAL_CARDS_COUNT)
-        return state.copy(deck = newDeck, cardsOnTable = initialCardsOnTable)
+        return state.next(deck = newDeck, cardsOnTable = initialCardsOnTable)
     }
 
     private fun dealCards(state: GameState, allPlayers: List<Player>): GameState {
@@ -98,11 +96,9 @@ object Game {
                 )
             }
 
-        return state.copy(
+        return state.next(
             deck = newDeck,
             playersState = newPlayersState,
-            cardWasPlayed = false,
-            previousPlayerWon = false
         )
     }
 
@@ -124,23 +120,25 @@ object Game {
         pickedCard: Card,
         allPlayers: List<Player>
     ): GameState {
-        val playerState = state.playersState.getValue(state.currentPlayer)
+        val oldPlayerState = state.playersState.getValue(state.currentPlayer)
         val wonCards = state.cardsOnTable + pickedCard
 
-        val newPlayerState = playerState.copy(
-            cardsInHand = playerState.cardsInHand.minus(pickedCard),
-            score = playerState.score + wonCards.sumOf { it.rank.points },
-            wonCardsCount = playerState.wonCardsCount + wonCards.size
-        )
+        val newPlayerState = oldPlayerState.run {
+            copy(
+                cardsInHand = cardsInHand.minus(pickedCard),
+                score = score + wonCards.sumOf { it.rank.points },
+                wonCardsCount = wonCardsCount + wonCards.size,
+                turnHistory = turnHistory + TurnHistoryEntry(sourceStateNumber = state.number, wasWon = true)
+            )
+        }
 
-        return state.copy(
-            cardsOnTable = emptyList(),
-            playersState = state.playersState + (state.currentPlayer to newPlayerState),
-            currentPlayer = selectNextPlayer(state.currentPlayer, allPlayers),
-            lastCardWinner = state.currentPlayer,
-            cardWasPlayed = true,
-            previousPlayerWon = true
-        )
+        return state.run {
+            next(
+                cardsOnTable = emptyList(),
+                playersState = playersState + (currentPlayer to newPlayerState),
+                currentPlayer = selectNextPlayer(currentPlayer, allPlayers),
+            )
+        }
     }
 
     private fun onCardsLost(
@@ -150,17 +148,20 @@ object Game {
     ): GameState {
         val oldPlayerState = state.playersState.getValue(state.currentPlayer)
 
-        val newPlayerState = oldPlayerState.copy(
-            cardsInHand = oldPlayerState.cardsInHand.minus(pickedCard),
-        )
+        val newPlayerState = oldPlayerState.run {
+            copy(
+                cardsInHand = cardsInHand.minus(pickedCard),
+                turnHistory = turnHistory + TurnHistoryEntry(sourceStateNumber = state.number, wasWon = false)
+            )
+        }
 
-        return state.copy(
-            cardsOnTable = state.cardsOnTable + pickedCard,
-            playersState = state.playersState + (state.currentPlayer to newPlayerState),
-            currentPlayer = selectNextPlayer(state.currentPlayer, allPlayers),
-            cardWasPlayed = true,
-            previousPlayerWon = false
-        )
+        return state.run {
+            next(
+                cardsOnTable = cardsOnTable + pickedCard,
+                playersState = playersState + (currentPlayer to newPlayerState),
+                currentPlayer = selectNextPlayer(currentPlayer, allPlayers),
+            )
+        }
     }
 
     private fun selectNextPlayer(current: Player, allPlayers: List<Player>): Player {
@@ -176,13 +177,16 @@ object Game {
         }
 
         if (state.cardsOnTable.isEmpty()) {
-            return state.copy(
+            return state.next(
                 playersState = assignBonusPoints(state.playersState, firstPlayer),
-                cardWasPlayed = false
             )
         }
 
-        val cardsFromTableOwner = state.lastCardWinner ?: firstPlayer
+        val cardsFromTableOwner = state
+            .playersState
+            .filter { it.value.wonCardsCount > 0 }
+            .maxByOrNull { it.value.turnHistory.last { entry -> entry.wasWon }.sourceStateNumber }?.key
+            ?: firstPlayer
 
         val winnerState = state.playersState.getValue(cardsFromTableOwner).run {
             copy(
@@ -195,10 +199,9 @@ object Game {
             .plus(cardsFromTableOwner to winnerState)
             .let { assignBonusPoints(it, firstPlayer) }
 
-        return state.copy(
+        return state.next(
             cardsOnTable = emptyList(),
             playersState = newPlayersState,
-            cardWasPlayed = false,
         )
     }
 
