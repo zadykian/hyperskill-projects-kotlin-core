@@ -7,51 +7,42 @@ data class PlayerState(
 )
 
 class GameState private constructor(
-    val parentEvent: GameEvent,
     val deck: Deck,
     val cardsOnTable: List<Card>,
     val playersState: Map<Player, PlayerState>,
     val currentPlayer: Player,
+    val allPlayers: List<Player>
 ) {
     fun handsAreEmpty() = playersState.values.all { it.cardsInHand.isEmpty() }
 
     fun isInitial() = deck.isFull()
 
-    fun isTerminal() = playersState.asSequence().sumOf { it.value.score } == Constants.totalPointsPerGame
+    fun isFinal() = playersState.asSequence().sumOf { it.value.score } == Constants.totalPointsPerGame
 
     fun next(
-        parentEvent: GameEvent,
         deck: Deck? = null,
         cardsOnTable: List<Card>? = null,
         playersState: Map<Player, PlayerState>? = null,
         currentPlayer: Player? = null,
     ) = GameState(
-        parentEvent = parentEvent,
         deck ?: this.deck,
         cardsOnTable ?: this.cardsOnTable,
         playersState ?: this.playersState,
-        currentPlayer ?: this.currentPlayer
+        currentPlayer ?: this.currentPlayer,
+        allPlayers = this.allPlayers,
     )
-
-    fun parentEvents(): Sequence<GameEvent> = sequence {
-        yield(parentEvent)
-        when (parentEvent) {
-            is GameCreated -> {}
-            is GameProceeded -> yieldAll(parentEvent.previous.parentEvents())
-            is GameCompleted -> yieldAll(parentEvent.previous.parentEvents())
-        }
-    }
 
     companion object {
         fun initial(
             deck: Deck,
-            firstPlayer: Player
+            firstPlayer: Player,
+            allPlayers: List<Player>
         ) = GameState(
-            parentEvent = GameCreated,
             deck = deck,
             cardsOnTable = emptyList(),
             playersState = emptyMap(),
-            currentPlayer = firstPlayer
+            currentPlayer = firstPlayer,
+            allPlayers = allPlayers,
         )
     }
 }

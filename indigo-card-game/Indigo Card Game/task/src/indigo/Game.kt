@@ -2,54 +2,99 @@ package indigo
 
 import indigo.GameProceeded.*
 
-class Game(private val gameStateHandler: GameStateHandler) {
-    fun run(players: List<Player>, firstPlayerSelector: (List<Player>) -> Player?, io: IO) {
-        io.write(Messages.GREETING)
-
-        val firstPlayer = firstPlayerSelector(players)
-        if (firstPlayer == null) {
-            io.write(Messages.GAME_OVER)
-            return
-        }
-
-        val initial = GameState.initial(Deck().shuffle(), firstPlayer)
-        val stateSequence = generateSequence(seed = initial) { makeProgress(it, players, firstPlayer) }
-
-        stateSequence
-            .onEach { gameStateHandler.onStateChanged(nextState = it) }
+class Game(private val gameEventHandler: GameEventHandler) {
+    fun run(players: List<Player>, firstPlayerSelector: (List<Player>) -> Player?) =
+        generateSequence<GameEvent>(seed = GameCreated(players, firstPlayerSelector)) { handle(it) }
+            .onEach { gameEventHandler.handle(event = it) }
             .last()
+            .let {
+                when (it) {
+                    is GameCompleted -> it.finalState
+                    is GameTerminated -> null
+                    else -> throw Exception(Errors.INVALID_GAME_STATE)
+                }
+            }
 
-        io.write(Messages.GAME_OVER)
-    }
-
-    private fun makeProgress(state: GameState, allPlayers: List<Player>, firstPlayer: Player) =
-        when {
-            state.isInitial() -> placeCardsOnTable(state)
-            state.isTerminal() -> null
-            state.handsAreEmpty() && state.deck.isEmpty() -> terminate(state, firstPlayer)
-            state.handsAreEmpty() -> dealCards(state, allPlayers)
-            else -> pickCard(state, allPlayers)
+    private fun handle(event: GameEvent) =
+        when (event) {
+            is GameCreated -> onGameCreated(event)
+            is FirstPlayerSelected -> onFirstPlayerSelected(event)
+            is GameStarted -> onGameStarted(event)
+            is GameProceeded -> onGameProceeded(event)
+            is GameCompleted, is GameTerminated -> null
         }
 
-    private fun placeCardsOnTable(state: GameState): GameState {
-        require(state.isInitial()) { Errors.INVALID_GAME_STATE }
-        val (initialCardsOnTable, newDeck) = state.deck.getCards(numberOfCards = Constants.INITIAL_CARDS_COUNT)
-        val event = InitialCardsPlaced(previous = state)
-        return state.next(parentEvent = event, deck = newDeck, cardsOnTable = initialCardsOnTable)
+    private fun onGameCreated(event: GameCreated): GameEvent {
+        val firstPlayer = event.firstPlayerSelector(event.allPlayers)
+        return if (firstPlayer == null) GameTerminated(parentEvent = event)
+        else FirstPlayerSelected(firstPlayer, event.allPlayers, parentEvent = event)
     }
 
-    private fun dealCards(state: GameState, allPlayers: List<Player>): GameState {
+    private fun onFirstPlayerSelected(event: FirstPlayerSelected): GameStarted {
+        val initialState = GameState.initial(Deck().shuffle(), event.firstPlayer, event.allPlayers)
+        return GameStarted(initialState, parentEvent = event)
+    }
+
+    private fun onGameStarted(event: GameStarted): InitialCardsPlaced {
+        val currentState = event.initialState
+        require(currentState.isInitial()) { Errors.INVALID_GAME_STATE }
+        val (initialCardsOnTable, newDeck) = currentState.deck.getCards(numberOfCards = Constants.INITIAL_CARDS_COUNT)
+        val nextState = currentState.next(deck = newDeck, cardsOnTable = initialCardsOnTable)
+        return InitialCardsPlaced(previousState = event.initialState, nextState = nextState, parentEvent = event)
+    }
+
+    private fun onGameProceeded(event: GameProceeded): GameEvent {
+        val state = event.nextState
+
+        if (state.run { handsAreEmpty() && deck.isEmpty() }) {
+            val terminalState = complete(event)
+            return GameCompleted(terminalState, parentEvent = event)
+        }
+
+        if (event.nextState.handsAreEmpty()) {
+            val nextState = dealCards(event)
+            return CardsDealt(previousState = state, nextState = nextState, parentEvent = event)
+        }
+
+        val pickedCard = state.currentPlayer.chooseCard(
+            topCardOnTable = state.cardsOnTable.lastOrNull(),
+            cardsInHand = state.playersState.getValue(state.currentPlayer).cardsInHand
+        )
+
+        if (pickedCard == null) {
+            return GameTerminated(parentEvent = event)
+        }
+
+        val playerWonCards = state.cardsOnTable
+            .lastOrNull()
+            ?.run { rank == pickedCard.rank || suit == pickedCard.suit } ?: false
+
+        val nextState = if (playerWonCards) assignCardsToWinner(state, pickedCard)
+        else putLostCardOnTable(state, pickedCard)
+
+        return CardPlayed(
+            pickedCard = pickedCard,
+            isWon = playerWonCards,
+            previousState = state,
+            nextState = nextState,
+            parentEvent = event
+        )
+    }
+
+    private fun dealCards(event: GameProceeded): GameState {
+        val state = event.nextState
+
         val cardsWithDecks = generateSequence(
             seed = Pair(emptyList<Card>(), state.deck)
         ) { it.second.getCards(numberOfCards = Constants.CARDS_PER_HAND_COUNT) }
             .drop(1)
-            .take(allPlayers.size)
+            .take(state.allPlayers.size)
             .toList()
 
         val dealtCards = cardsWithDecks.map { it.first }
         val newDeck = cardsWithDecks.last().second
 
-        val newPlayersState = allPlayers
+        val newPlayersState = state.allPlayers
             .asSequence()
             .zip(dealtCards.asSequence())
             .associate {
@@ -59,31 +104,10 @@ class Game(private val gameStateHandler: GameStateHandler) {
                 )
             }
 
-        return state.next(
-            parentEvent = CardsDealt(previous = state),
-            deck = newDeck,
-            playersState = newPlayersState
-        )
+        return state.next(deck = newDeck, playersState = newPlayersState)
     }
 
-    private fun pickCard(state: GameState, allPlayers: List<Player>): GameState? {
-        val pickedCard = state.currentPlayer.chooseCard(
-            topCardOnTable = state.cardsOnTable.lastOrNull(),
-            cardsInHand = state.playersState.getValue(state.currentPlayer).cardsInHand
-        )
-
-        return pickedCard?.let {
-            val playerWonCards = state.cardsOnTable.lastOrNull()?.run { rank == it.rank || suit == it.suit }
-            return if (playerWonCards == true) onCardsWon(state, it, allPlayers)
-            else onCardsLost(state, it, allPlayers)
-        }
-    }
-
-    private fun onCardsWon(
-        state: GameState,
-        pickedCard: Card,
-        allPlayers: List<Player>
-    ): GameState {
+    private fun assignCardsToWinner(state: GameState, pickedCard: Card): GameState {
         val oldPlayerState = state.playersState.getValue(state.currentPlayer)
         val wonCards = state.cardsOnTable + pickedCard
 
@@ -97,7 +121,6 @@ class Game(private val gameStateHandler: GameStateHandler) {
 
         return state.run {
             next(
-                parentEvent = CardWon(pickedCard, previous = this),
                 cardsOnTable = emptyList(),
                 playersState = playersState + (currentPlayer to newPlayerState),
                 currentPlayer = selectNextPlayer(currentPlayer, allPlayers),
@@ -105,10 +128,9 @@ class Game(private val gameStateHandler: GameStateHandler) {
         }
     }
 
-    private fun onCardsLost(
+    private fun putLostCardOnTable(
         state: GameState,
         pickedCard: Card,
-        allPlayers: List<Player>
     ): GameState {
         val oldPlayerState = state.playersState.getValue(state.currentPlayer)
 
@@ -118,7 +140,6 @@ class Game(private val gameStateHandler: GameStateHandler) {
 
         return state.run {
             next(
-                parentEvent = CardLost(pickedCard, previous = this),
                 cardsOnTable = cardsOnTable + pickedCard,
                 playersState = playersState + (currentPlayer to newPlayerState),
                 currentPlayer = selectNextPlayer(currentPlayer, allPlayers),
@@ -133,22 +154,28 @@ class Game(private val gameStateHandler: GameStateHandler) {
         return allPlayers[nextIndex]
     }
 
-    private fun terminate(state: GameState, firstPlayer: Player): GameState {
-        require(state.handsAreEmpty() && state.deck.isEmpty()) {
-            Errors.INVALID_GAME_STATE
-        }
+    private fun complete(event: GameProceeded): GameState {
+        val state = event.nextState
+        require(state.handsAreEmpty() && state.deck.isEmpty()) { Errors.INVALID_GAME_STATE }
+
+        val firstPlayer = event
+            .parentEvents()
+            .filterIsInstance<FirstPlayerSelected>()
+            .single()
+            .firstPlayer
 
         if (state.cardsOnTable.isEmpty()) {
             return state.next(
-                parentEvent = GameCompleted(previous = state),
                 playersState = assignBonusPoints(state.playersState, firstPlayer),
             )
         }
 
-        val cardsFromTableOwner = state
+        val lastCardWinner = event
             .parentEvents()
-            .filterIsInstance<CardWon>()
-            .firstOrNull()?.playedBy ?: firstPlayer
+            .filterIsInstance<CardPlayed>()
+            .firstOrNull { it.isWon }?.playedBy
+
+        val cardsFromTableOwner = lastCardWinner ?: firstPlayer
 
         val winnerState = state.playersState.getValue(cardsFromTableOwner).run {
             copy(
@@ -161,11 +188,7 @@ class Game(private val gameStateHandler: GameStateHandler) {
             .plus(cardsFromTableOwner to winnerState)
             .let { assignBonusPoints(it, firstPlayer) }
 
-        return state.next(
-            parentEvent = GameCompleted(previous = state),
-            cardsOnTable = emptyList(),
-            playersState = newPlayersState,
-        )
+        return state.next(cardsOnTable = emptyList(), playersState = newPlayersState)
     }
 
     private fun assignBonusPoints(
