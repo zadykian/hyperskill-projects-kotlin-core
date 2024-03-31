@@ -15,8 +15,10 @@ fun main() {
         }
     }
 
-    Game.run(
-        players = listOf(User(io, name = "Player"), Computer(io)),
+    val gameStateHandler = IoGameStateHandler(io)
+
+    Game(gameStateHandler).run(
+        players = listOf(User(io, name = "Player"), Computer()),
         firstPlayerSelector = ::selectFirstPlayer,
         io
     )

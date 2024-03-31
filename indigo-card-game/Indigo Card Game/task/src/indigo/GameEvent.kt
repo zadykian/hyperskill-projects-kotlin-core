@@ -4,16 +4,18 @@ sealed interface GameEvent
 
 object GameCreated : GameEvent
 
-open class GameProceeded private constructor(val previous: GameState) : GameEvent {
+sealed class GameProceeded private constructor(val previous: GameState) : GameEvent {
     class InitialCardsPlaced(previous: GameState) : GameProceeded(previous)
 
     class CardsDealt(previous: GameState) : GameProceeded(previous)
 
-    class CardWon(previous: GameState) : GameProceeded(previous) {
+    sealed class CardPlayed(val pickedCard: Card, previous: GameState) : GameProceeded(previous) {
         val playedBy = previous.currentPlayer
     }
 
-    class CardLost(previous: GameState) : GameProceeded(previous)
+    class CardWon(pickedCard: Card, previous: GameState) : CardPlayed(pickedCard, previous)
+
+    class CardLost(pickedCard: Card, previous: GameState) : CardPlayed(pickedCard, previous)
 }
 
-class GameTerminated(val previous: GameState) : GameEvent
+class GameCompleted(val previous: GameState) : GameEvent

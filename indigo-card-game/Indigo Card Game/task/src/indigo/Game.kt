@@ -2,7 +2,7 @@ package indigo
 
 import indigo.GameProceeded.*
 
-object Game {
+class Game(private val gameStateHandler: GameStateHandler) {
     fun run(players: List<Player>, firstPlayerSelector: (List<Player>) -> Player?, io: IO) {
         io.write(Messages.GREETING)
 
@@ -16,38 +16,10 @@ object Game {
         val stateSequence = generateSequence(seed = initial) { makeProgress(it, players, firstPlayer) }
 
         stateSequence
-            .onEach { afterEach(io, nextState = it) }
+            .onEach { gameStateHandler.onStateChanged(nextState = it) }
             .last()
 
         io.write(Messages.GAME_OVER)
-    }
-
-    private fun afterEach(io: IO, nextState: GameState) {
-        fun writeCardsOnTable() {
-            io.write(Messages.LINE_SEPARATOR)
-            io.write(Messages.cardsOnTable(nextState.cardsOnTable))
-        }
-
-        fun writeCurrentScore() = io.write(Messages.currentScore(nextState))
-
-        when (val event = nextState.parentEvent) {
-            is InitialCardsPlaced -> {
-                io.write(Messages.initialCards(nextState.cardsOnTable))
-                writeCardsOnTable()
-            }
-
-            is CardWon -> {
-                io.write(Messages.playerWins(event.playedBy))
-                writeCurrentScore()
-                writeCardsOnTable()
-            }
-
-            is CardLost -> writeCardsOnTable()
-
-            is GameTerminated -> writeCurrentScore()
-
-            else -> {}
-        }
     }
 
     private fun makeProgress(state: GameState, allPlayers: List<Player>, firstPlayer: Player) =
@@ -96,7 +68,7 @@ object Game {
 
     private fun pickCard(state: GameState, allPlayers: List<Player>): GameState? {
         val pickedCard = state.currentPlayer.chooseCard(
-            cardsOnTable = state.cardsOnTable,
+            topCardOnTable = state.cardsOnTable.lastOrNull(),
             cardsInHand = state.playersState.getValue(state.currentPlayer).cardsInHand
         )
 
@@ -125,7 +97,7 @@ object Game {
 
         return state.run {
             next(
-                parentEvent = CardWon(previous = this),
+                parentEvent = CardWon(pickedCard, previous = this),
                 cardsOnTable = emptyList(),
                 playersState = playersState + (currentPlayer to newPlayerState),
                 currentPlayer = selectNextPlayer(currentPlayer, allPlayers),
@@ -146,7 +118,7 @@ object Game {
 
         return state.run {
             next(
-                parentEvent = CardLost(previous = this),
+                parentEvent = CardLost(pickedCard, previous = this),
                 cardsOnTable = cardsOnTable + pickedCard,
                 playersState = playersState + (currentPlayer to newPlayerState),
                 currentPlayer = selectNextPlayer(currentPlayer, allPlayers),
@@ -168,7 +140,7 @@ object Game {
 
         if (state.cardsOnTable.isEmpty()) {
             return state.next(
-                parentEvent = GameTerminated(previous = state),
+                parentEvent = GameCompleted(previous = state),
                 playersState = assignBonusPoints(state.playersState, firstPlayer),
             )
         }
@@ -190,7 +162,7 @@ object Game {
             .let { assignBonusPoints(it, firstPlayer) }
 
         return state.next(
-            parentEvent = GameTerminated(previous = state),
+            parentEvent = GameCompleted(previous = state),
             cardsOnTable = emptyList(),
             playersState = newPlayersState,
         )

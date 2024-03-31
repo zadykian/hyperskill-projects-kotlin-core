@@ -38,7 +38,7 @@ class GameState private constructor(
         when (parentEvent) {
             is GameCreated -> {}
             is GameProceeded -> yieldAll(parentEvent.previous.parentEvents())
-            is GameTerminated -> yieldAll(parentEvent.previous.parentEvents())
+            is GameCompleted -> yieldAll(parentEvent.previous.parentEvents())
         }
     }
 
