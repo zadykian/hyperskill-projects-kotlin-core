@@ -1,7 +1,5 @@
-import indigo.Card
-import indigo.Computer
-import indigo.Rank
-import indigo.Suit
+package indigo
+
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
@@ -24,6 +22,11 @@ class ComputerPlayerTest {
     companion object {
         @JvmStatic
         fun provideTestCases() = listOf(
+            ChooseCardTestCase(
+                topCardOnTable = null,
+                cardsInHand = listOf(Card(Suit.Clubs, Rank.Ace)),
+                expectedChosenCard = Card(Suit.Clubs, Rank.Ace)
+            ),
             ChooseCardTestCase(
                 topCardOnTable = null,
                 cardsInHand = listOf(Card(Suit.Clubs, Rank.Ace)),
