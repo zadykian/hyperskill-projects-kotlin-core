@@ -6,9 +6,6 @@ object Messages {
     const val LINE_SEPARATOR = ""
     const val GAME_OVER = "Game Over"
 
-    const val INVALID_NUMBER_OF_CARDS = "Invalid number of cards."
-    const val NOT_ENOUGH_CARDS = "The remaining cards are insufficient to meet the request."
-
     fun cards(cards: Iterable<Card>) = cards.joinToString(separator = " ")
 
     fun initialCards(cards: Iterable<Card>) = "Initial cards on the table: ${cards(cards)}"
@@ -48,7 +45,12 @@ object Answers {
 }
 
 object Errors {
-    const val INVALID_GAME_STATE = "Invalid game state for current operation!"
+    const val INVALID_NUMBER_OF_PLAYERS =
+        "Invalid number of players provided! " +
+                "[${Constants.MIN_PLAYERS_COUNT}..${Constants.MAX_PLAYERS_COUNT}] players are supported"
 
-    const val UNKNOWN_CURRENT_PLAYER = "List 'allPlayers' is expected to contain 'current'!"
+    const val INVALID_NUMBER_OF_CARDS = "Invalid number of cards!"
+    const val NOT_ENOUGH_CARDS = "The remaining cards are insufficient to meet the request!"
+    const val INVALID_GAME_STATE = "Invalid game state for current operation!"
+    const val UNKNOWN_PLAYER = "Passed player does not belong to list of all players!"
 }

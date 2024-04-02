@@ -7,6 +7,11 @@ interface GameEventHandler {
     fun handle(event: GameEvent)
 }
 
+interface IO {
+    fun read(): String
+    fun write(value: String)
+}
+
 class IoGameEventHandler(private val io: IO) : GameEventHandler {
     override fun handle(event: GameEvent) =
         when (event) {

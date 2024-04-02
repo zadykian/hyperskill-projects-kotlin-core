@@ -5,28 +5,44 @@ sealed class GameEvent(private val parentEvent: GameEvent?) {
         if (parentEvent == null) {
             return@sequence
         }
-
         yield(parentEvent)
         yieldAll(parentEvent.parentEvents())
     }
 }
 
 class GameCreated(val allPlayers: List<Player>, val firstPlayerSelector: (List<Player>) -> Player?) :
-    GameEvent(parentEvent = null)
+    GameEvent(parentEvent = null) {
+    init {
+        require(allPlayers.size in Constants.MIN_PLAYERS_COUNT..Constants.MAX_PLAYERS_COUNT) {
+            Errors.INVALID_NUMBER_OF_PLAYERS
+        }
+    }
+}
 
-class FirstPlayerSelected(val firstPlayer: Player, val allPlayers: List<Player>, parentEvent: GameCreated) :
-    GameEvent(parentEvent)
-
-class GameStarted(val initialState: GameState, parentEvent: FirstPlayerSelected) : GameEvent(parentEvent)
+class GameStarted(val initialState: GameState, parentEvent: GameCreated) : GameEvent(parentEvent) {
+    init {
+        require(initialState.isInitial()) { Errors.INVALID_GAME_STATE }
+    }
+}
 
 sealed class GameProceeded private constructor(
     val previousState: GameState, val nextState: GameState, parentEvent: GameEvent
 ) : GameEvent(parentEvent) {
     class InitialCardsPlaced(previousState: GameState, nextState: GameState, parentEvent: GameStarted) :
-        GameProceeded(previousState, nextState, parentEvent)
+        GameProceeded(previousState, nextState, parentEvent) {
+        init {
+            require(nextState.cardsOnTable.size == Constants.INITIAL_CARDS_ON_TABLE_COUNT) {
+                Errors.INVALID_GAME_STATE
+            }
+        }
+    }
 
     class CardsDealt(previousState: GameState, nextState: GameState, parentEvent: GameProceeded) :
-        GameProceeded(previousState, nextState, parentEvent)
+        GameProceeded(previousState, nextState, parentEvent) {
+        init {
+            require(nextState.handsAreFull()) { Errors.INVALID_GAME_STATE }
+        }
+    }
 
     class CardPlayed(
         val pickedCard: Card,

@@ -1,9 +1,10 @@
 package indigo
 
-class IO(val read: () -> String, val write: (String) -> Unit)
-
 fun main() {
-    val io = IO(read = { readln() }, write = { println(it) })
+    val io = object : IO {
+        override fun read() = readln()
+        override fun write(value: String) = println(value)
+    }
 
     tailrec fun selectFirstPlayer(players: List<Player>): Player? {
         io.write(Messages.PLAY_FIRST_REQUEST)
