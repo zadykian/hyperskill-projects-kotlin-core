@@ -1,5 +1,6 @@
 package indigo
 
+import indigo.generated.Cards
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
@@ -10,7 +11,7 @@ data class ChooseCardTestCase(
     val expectedChosenCard: Card?
 )
 
-class ComputerPlayerTest {
+class ComputerPlayerTests {
     @ParameterizedTest
     @MethodSource("provideTestCases")
     fun chooseCard(testcase: ChooseCardTestCase) {
@@ -24,13 +25,8 @@ class ComputerPlayerTest {
         fun provideTestCases() = listOf(
             ChooseCardTestCase(
                 topCardOnTable = null,
-                cardsInHand = listOf(Card(Suit.Clubs, Rank.Ace)),
-                expectedChosenCard = Card(Suit.Clubs, Rank.Ace)
-            ),
-            ChooseCardTestCase(
-                topCardOnTable = null,
-                cardsInHand = listOf(Card(Suit.Clubs, Rank.Ace)),
-                expectedChosenCard = Card(Suit.Clubs, Rank.Ace)
+                cardsInHand = listOf(Cards.aceOfClubs),
+                expectedChosenCard = Cards.aceOfClubs
             )
         )
     }

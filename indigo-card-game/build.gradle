@@ -9,6 +9,13 @@ buildscript {
     }
 }
 
+if (hasProperty('buildScan')) {
+    buildScan {
+        termsOfServiceUrl = 'https://gradle.com/terms-of-service'
+        termsOfServiceAgree = 'yes'
+    }
+}
+
 subprojects {
     apply plugin: 'application'
     apply plugin: 'java'
@@ -66,13 +73,6 @@ subprojects {
     compileJava.options.encoding = 'utf-8'
     tasks.withType(JavaCompile) {
         options.encoding = 'utf-8'
-    }
-
-    tasks.register('generateCardsType', JavaExec) {
-        group = 'unit-testing'
-        description = 'Generate Cards type for unit testing purposes.'
-        classpath = sourceSets.test.runtimeClasspath
-        mainClass.set('buildTasks.Runner')
     }
 }
 
