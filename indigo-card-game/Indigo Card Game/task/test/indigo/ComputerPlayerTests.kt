@@ -113,6 +113,30 @@ class ComputerPlayerTests {
                 cardsInHand = setOf(jackOfSpades, queenOfHearts, kingOfClubs),
                 expected = Expects.AnyOf(jackOfSpades, queenOfHearts, kingOfClubs)
             ),
+            ChooseCardTestCase(
+                name = "Two or more candidate cards with the same SUIT as the top card on the table",
+                topCardOnTable = fiveOfHearts,
+                cardsInHand = setOf(sixOfHearts, eightOfClubs, fiveOfSpades, sevenOfDiamonds, sevenOfHearts),
+                expected = Expects.AnyOf(sixOfHearts, sevenOfHearts)
+            ),
+            ChooseCardTestCase(
+                name = "Two or more candidate cards with the same RANK as the top card on the table",
+                topCardOnTable = jackOfHearts,
+                cardsInHand = setOf(threeOfHearts, jackOfClubs, jackOfSpades, sixOfDiamonds),
+                expected = Expects.AnyOf(jackOfClubs, jackOfSpades)
+            ),
+            ChooseCardTestCase(
+                name = "Two or more candidate cards with the same SUIT and RANK as the top card on the table",
+                topCardOnTable = fiveOfHearts,
+                cardsInHand = setOf(fiveOfSpades, fiveOfDiamonds, sixOfHearts, fiveOfClubs, sevenOfHearts),
+                expected = Expects.AnyOf(sixOfHearts, sevenOfHearts)
+            ),
+            ChooseCardTestCase(
+                name = "Two or more candidate cards. None with same SUIT or RANK",
+                topCardOnTable = fiveOfHearts,
+                cardsInHand = setOf(aceOfDiamonds, sevenOfHearts, aceOfClubs, fiveOfSpades),
+                expected = Expects.AnyOf(sevenOfHearts, fiveOfSpades)
+            ),
         )
     }
 }

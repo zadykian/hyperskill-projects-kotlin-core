@@ -49,7 +49,7 @@ class Computer(name: String? = null) : Player(name) {
         return when (candidateCards.size) {
             0 -> onEmptyCandidateCards(cardsInHand)
             1 -> candidateCards.single()
-            else -> onMultipleCandidateCards(cardsInHand)
+            else -> onMultipleCandidateCards(topCardOnTable!!, candidateCards)
         }
     }
 
@@ -73,7 +73,17 @@ class Computer(name: String? = null) : Player(name) {
         return cardsInHand.random()
     }
 
-    private fun onMultipleCandidateCards(cardsInHand: List<Card>): Card {
-        TODO()
+    private fun onMultipleCandidateCards(topCardOnTable: Card, candidateCards: List<Card>): Card {
+        val withSameSuit = candidateCards.filter { it.suit == topCardOnTable.suit }
+        if (withSameSuit.size >= 2) {
+            return withSameSuit.random()
+        }
+
+        val withSameRank = candidateCards.filter { it.rank == topCardOnTable.rank }
+        if (withSameRank.size >= 2) {
+            return withSameRank.random()
+        }
+
+        return candidateCards.random()
     }
 }
