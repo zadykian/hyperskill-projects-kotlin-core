@@ -1,7 +1,5 @@
 package indigo
 
-import kotlin.random.Random
-
 sealed class Player(name: String? = null) {
     val name: String = name ?: this::class.simpleName!!
 
@@ -37,8 +35,6 @@ class User(private val io: IO, name: String? = null) : Player(name) {
 }
 
 class Computer(name: String? = null) : Player(name) {
-    private val random = Random.Default
-
     override val displayPlayedCards: Boolean = true
 
     override fun chooseCard(topCardOnTable: Card?, cardsInHand: List<Card>): Card? {
@@ -46,6 +42,38 @@ class Computer(name: String? = null) : Player(name) {
             return null
         }
 
+        val candidateCards =
+            if (topCardOnTable == null) emptyList()
+            else cardsInHand.filter { it.rank == topCardOnTable.rank || it.suit == topCardOnTable.suit }
+
+        return when (candidateCards.size) {
+            0 -> onEmptyCandidateCards(cardsInHand)
+            1 -> candidateCards.single()
+            else -> onMultipleCandidateCards(cardsInHand)
+        }
+    }
+
+    private fun onEmptyCandidateCards(cardsInHand: List<Card>): Card {
+        fun <T> tryGetGroupWithMaxEntries(selector: (Card) -> T) =
+            cardsInHand
+                .groupBy(selector)
+                .asSequence()
+                .filter { it.value.size > 1 }
+                .sortedByDescending { it.value.size }
+                .firstOrNull()?.value
+
+        tryGetGroupWithMaxEntries { it.suit }?.let {
+            return it.random()
+        }
+
+        tryGetGroupWithMaxEntries { it.rank }?.let {
+            return it.random()
+        }
+
+        return cardsInHand.random()
+    }
+
+    private fun onMultipleCandidateCards(cardsInHand: List<Card>): Card {
         TODO()
     }
 }

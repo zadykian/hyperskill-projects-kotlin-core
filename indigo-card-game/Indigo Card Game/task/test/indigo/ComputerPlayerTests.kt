@@ -2,7 +2,6 @@ package indigo
 
 import assertk.assertThat
 import assertk.assertions.isEqualTo
-import assertk.assertions.isIn
 import assertk.assertions.isNull
 import indigo.generated.cards.*
 import org.junit.jupiter.api.Test
@@ -46,7 +45,7 @@ class ComputerPlayerTests {
         assertThat(chosenCard).let {
             when (testcase.expected) {
                 is Expects.Specific -> it.isEqualTo(testcase.expected.card)
-                is Expects.AnyOf -> it.isIn(testcase.expected.cards)
+                is Expects.AnyOf -> it.belongsTo(testcase.expected.cards)
             }
         }
     }
@@ -76,7 +75,7 @@ class ComputerPlayerTests {
                 name = "Empty table; Cards with same suit in hand",
                 topCardOnTable = null,
                 cardsInHand = setOf(twoOfClubs, kingOfDiamonds, fourOfHearts, queenOfSpades, jackOfHearts),
-                expected = Expects.AnyOf(fiveOfHearts, jackOfHearts)
+                expected = Expects.AnyOf(fourOfHearts, jackOfHearts)
             ),
             ChooseCardTestCase(
                 name = "Empty table; Cards with same rank in hand",
