@@ -1,6 +1,7 @@
 package gitinternals
 
 import java.nio.file.Files
+import java.util.zip.InflaterInputStream
 
 fun main() {
     val io = object : IO {
@@ -21,5 +22,12 @@ fun main() {
         return
     }
 
+    val decompressedContent = Files
+        .newInputStream(path)
+        .let { InflaterInputStream(it) }
+        .use { stream ->
+            stream.reader().use { it.readText() }
+        }
 
+    io.write(decompressedContent)
 }
