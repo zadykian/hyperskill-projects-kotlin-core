@@ -26,8 +26,12 @@ fun main() {
         .newInputStream(path)
         .let { InflaterInputStream(it) }
         .use { stream ->
-            stream.reader().use { it.readText() }
+            stream.reader().use { it.readLines() }
         }
 
-    io.write(decompressedContent)
+    val splitByNullChar = decompressedContent
+        .flatMap { it.split('\u0000') }
+        .joinToString("\n")
+
+    io.write(splitByNullChar)
 }
