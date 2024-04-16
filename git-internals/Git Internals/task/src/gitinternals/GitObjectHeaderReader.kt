@@ -10,7 +10,7 @@ enum class GitObjectType {
     Tree,
 }
 
-class GitObjectHeader(private val type: GitObjectType, private val sizeInBytes: Long) {
+class GitObjectHeader(private val type: GitObjectType, private val sizeInBytes: ULong) {
     override fun toString() = "type:{${type.toString().lowercase()}} length:$sizeInBytes"
 }
 
@@ -35,15 +35,24 @@ object GitObjectHeaderReader {
             return Failure(Errors.GIT_OBJECT_NOT_FOUND)
         }
 
-        val decompressedContent = Files
+        val firstLine = Files
             .newInputStream(gitObjectPath)
             .let { InflaterInputStream(it) }
-            .use { stream ->
-                stream.reader().use { it.read() }
-            }
+            .bufferedReader()
+            .use { it.readLine() }
 
-        val splitByNullChar = decompressedContent
-            .flatMap { it.split('\u0000') }
-            .joinToString("\n")
+        val firstLineTokens = firstLine.split(' ').map { it.trim() }
+
+        val objectType = when (firstLineTokens[0].lowercase()) {
+            "blob" -> GitObjectType.Blob
+            "commit" -> GitObjectType.Commit
+            "tree" -> GitObjectType.Tree
+            else -> return Failure(Errors.invalidGitObjectHeader(firstLine))
+        }
+
+        val sizeInBytes = firstLineTokens[1].toULongOrNull()
+            ?: return Failure(Errors.invalidGitObjectHeader(firstLine))
+
+        return Success(GitObjectHeader(objectType, sizeInBytes))
     }
 }
