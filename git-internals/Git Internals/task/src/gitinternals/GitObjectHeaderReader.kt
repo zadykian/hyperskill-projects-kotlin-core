@@ -11,7 +11,7 @@ enum class GitObjectType {
 }
 
 class GitObjectHeader(private val type: GitObjectType, private val sizeInBytes: ULong) {
-    override fun toString() = "type:{${type.toString().lowercase()}} length:$sizeInBytes"
+    override fun toString() = "type:${type.toString().lowercase()} length:$sizeInBytes"
 }
 
 object GitObjectHeaderReader {
@@ -28,6 +28,7 @@ object GitObjectHeaderReader {
         }
 
         val gitObjectPath = gitRootDirectory
+            .resolve("objects")
             .resolve(gitObjectHash.substring(0, 2))
             .resolve(gitObjectHash.substring(2))
 
@@ -35,11 +36,15 @@ object GitObjectHeaderReader {
             return Failure(Errors.GIT_OBJECT_NOT_FOUND)
         }
 
+        return loadObjectHeader(gitObjectPath)
+    }
+
+    private fun loadObjectHeader(gitObjectPath: Path): Result<GitObjectHeader> {
         val firstLine = Files
             .newInputStream(gitObjectPath)
             .let { InflaterInputStream(it) }
             .bufferedReader()
-            .use { it.readLine() }
+            .use { it.readWhile { char -> char != '\u0000' }.joinToString(separator = "") }
 
         val firstLineTokens = firstLine.split(' ').map { it.trim() }
 
