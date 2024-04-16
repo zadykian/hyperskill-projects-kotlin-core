@@ -9,29 +9,11 @@ fun main() {
         override fun write(value: String) = println(value)
     }
 
-    io.write(Requests.GIT_OBJECT_LOCATION)
+    io.write(Requests.GIT_ROOT_DIRECTORY)
     val path = tryGetPath(io.read())
 
-    if (path == null) {
-        io.write(Errors.INVALID_PATH)
-        return
-    }
 
-    if (Files.exists(path).not()) {
-        io.write(Errors.fileDoesntExist(path))
-        return
-    }
 
-    val decompressedContent = Files
-        .newInputStream(path)
-        .let { InflaterInputStream(it) }
-        .use { stream ->
-            stream.reader().use { it.readLines() }
-        }
 
-    val splitByNullChar = decompressedContent
-        .flatMap { it.split('\u0000') }
-        .joinToString("\n")
-
-    io.write(splitByNullChar)
+    //io.write(splitByNullChar)
 }

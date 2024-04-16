@@ -4,9 +4,9 @@ import java.nio.file.InvalidPathException
 import java.nio.file.Path
 import java.nio.file.Paths
 
-fun tryGetPath(path: String): Path? =
+fun tryGetPath(path: String): Result<Path> =
     try {
-        Paths.get(path)
+        Success(Paths.get(path))
     } catch (e: InvalidPathException) {
-        null
+        Failure(Errors.INVALID_PATH)
     }
