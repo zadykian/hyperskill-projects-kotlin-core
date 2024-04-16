@@ -12,9 +12,9 @@ interface IO {
 
     fun <T> run(scope: IO.() -> Result<T>): Result<T> = scope(this@IO)
 
-    fun <T, R> Result<T>.bind(transform: IO.(T) -> Result<R>) = when(this) {
+    fun <T, R> Result<T>.bind(transform: (T) -> Result<R>) = when(this) {
         is Success -> try {
-            transform(this@IO, value)
+            transform(value)
         } catch (e: Throwable) {
             Failure(e.localizedMessage)
         }
