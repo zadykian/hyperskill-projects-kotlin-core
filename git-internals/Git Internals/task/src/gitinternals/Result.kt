@@ -19,4 +19,3 @@ fun <T> Result<T>.onFailure(handle: (String) -> Unit) = when(this) {
     is Success -> Unit
     is Failure -> handle(this.errorMessage)
 }
-

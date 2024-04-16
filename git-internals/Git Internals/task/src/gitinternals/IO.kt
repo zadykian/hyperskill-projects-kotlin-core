@@ -1,6 +1,3 @@
 package gitinternals
 
-interface IO {
-    fun read(): String
-    fun write(value: String)
-}
+data class IO(val read: () -> String, val write: (String) -> Unit)
