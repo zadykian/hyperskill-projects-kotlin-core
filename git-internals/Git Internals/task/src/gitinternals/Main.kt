@@ -1,6 +1,7 @@
 package gitinternals
 
 import java.nio.file.Files
+import java.nio.file.Paths
 
 fun main() {
     val io = object : IO {
@@ -17,10 +18,8 @@ context(IO)
 fun run() =
     run {
         write(Requests.GIT_ROOT_DIRECTORY)
-        tryGetPath(read())
-    }
-    .bind {
-        if (Files.exists(it)) Success(it) else Failure(Errors.DIRECTORY_NOT_FOUND)
+        val path = Paths.get(read())
+        if (Files.exists(path)) Success(path) else Failure(Errors.DIRECTORY_NOT_FOUND)
     }
     .bind {
         write(Requests.GIT_OBJECT_HASH)
@@ -35,4 +34,3 @@ fun run() =
         Success(Unit)
     }
     .onFailure { write(it) }
-
