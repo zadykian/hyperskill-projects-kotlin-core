@@ -1,5 +1,7 @@
 package gitinternals
 
+import java.nio.file.Files
+
 fun main() {
     val io = object : IO {
         override fun read() = readln()
@@ -16,6 +18,9 @@ fun run() =
     run {
         write(Requests.GIT_ROOT_DIRECTORY)
         tryGetPath(read())
+    }
+    .bind {
+        if (Files.exists(it)) Success(it) else Failure(Errors.DIRECTORY_NOT_FOUND)
     }
     .bind {
         write(Requests.GIT_OBJECT_HASH)

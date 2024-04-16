@@ -19,10 +19,6 @@ object GitObjectHeaderReader {
     private val sha256Regex = "[a-fA-F0-9]{64}".toRegex()
 
     fun read(gitRootDirectory: Path, gitObjectHash: String): Result<GitObjectHeader> {
-        if (Files.notExists(gitRootDirectory)) {
-            return Failure(Errors.DIRECTORY_NOT_FOUND)
-        }
-
         if (!gitObjectHash.run { matches(sha1Regex) || matches(sha256Regex) }) {
             return Failure(Errors.INVALID_GIT_OBJECT_HASH)
         }
