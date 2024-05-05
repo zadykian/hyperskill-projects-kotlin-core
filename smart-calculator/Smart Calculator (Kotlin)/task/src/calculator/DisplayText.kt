@@ -16,5 +16,9 @@ object DisplayText {
         const val INVALID_IDENTIFIER = "Invalid identifier"
         const val INVALID_ASSIGNMENT = "Invalid assignment"
         const val UNKNOWN_IDENTIFIER = "Unknown identifier"
+
+        fun unexpectedChar(char: Char, position: Int) = "Unexpected character '$char' at position '$position'"
+
+        fun unexpectedToken(token: Token?) = "Unexpected token '${token}'!"
     }
 }
