@@ -9,6 +9,7 @@ object InputParser {
         .let {
             when {
                 it.isEmpty() -> Input.Empty
+
                 it[0] == '/' -> it
                     .removePrefix("/")
                     .let { cmd -> commands[cmd] }
@@ -18,7 +19,7 @@ object InputParser {
                 else -> it
                     .let(ExpressionLexer::tokenize)
                     .let(ExpressionParser::parse)
-                    ?.let(Input::ArithmeticOperation)
+                    ?.let(Input::ArithmeticExpression)
                     ?: Input.Error(ErrorType.InvalidExpression)
             }
         }

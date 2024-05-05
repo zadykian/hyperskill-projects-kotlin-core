@@ -35,7 +35,7 @@ object ExpressionParser {
                 Expression.Unary(Operator.Minus, it)
             }
 
-            is Token.Number -> Expression.Number(nextToken.value)
+            is Token.Number -> Expression.Number(nextToken.value.toInt())
             null -> null
         }
 
