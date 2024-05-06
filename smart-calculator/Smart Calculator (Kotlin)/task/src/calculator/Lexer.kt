@@ -42,8 +42,8 @@ object Lexer {
                     }
                 }
 
-                char.isIdentifierChar() -> {
-                    val word = advanceWhile { !it.isWhitespace() && !it.isOperator() }
+                char.isWordChar() -> {
+                    val word = advanceWhile { it.isWordChar() }
                     yield(Token.Word(word).success())
                 }
 
@@ -58,7 +58,7 @@ object Lexer {
         }
     }
 
-    private fun Char.isIdentifierChar() = this in 'a'..'z' || this in 'A'..'Z'
+    private fun Char.isWordChar() = !this.isWhitespace() && !this.isOperator()
 
     private fun Char.isOperator() = this == '+' || this == '-' || this == '=' || this == '/'
 }
