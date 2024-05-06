@@ -7,8 +7,6 @@ enum class Operator {
 
 typealias Value = Int
 
-class Assignment(val identifier: Identifier, val expression: Expression)
-
 sealed interface Expression {
     class Number(val value: Value) : Expression
     class Variable(val identifier: Identifier) : Expression
@@ -28,7 +26,7 @@ class Identifier private constructor(private val value: String) {
     }
 
     companion object {
-        private val regex = Regex("[a-zA-Z]+]")
+        private val regex = Regex("^[a-zA-Z]+$")
 
         fun tryParse(string: String): Result<Identifier> =
             if (regex.matches(string)) Success(Identifier(string))

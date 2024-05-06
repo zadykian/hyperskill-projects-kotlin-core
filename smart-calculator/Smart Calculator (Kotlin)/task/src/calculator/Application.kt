@@ -5,7 +5,7 @@ class Application(
     private val io: IO
 ) {
     tailrec fun run() {
-        val runNext = when (val parsed = InputParser.parse(io.read())) {
+        val runNext = when (val parsed = io.read().let(Lexer::tokenize).let(Parser::parse)) {
             is Success -> {
                 handleInput(parsed.value)
                 !parsed.value.isExitCommand()
@@ -24,13 +24,13 @@ class Application(
 
     private fun handleInput(input: Input): Any =
         when (input) {
-            is Input.ArithmeticExpression -> calculator
+            is Input.Expression -> calculator
                 .evaluate(input.expression)
                 .onSuccess { io.write(it.toString()) }
                 .onFailure { io.write(it) }
 
-            is Input.VariableAssigment -> calculator
-                .assign(input.assignment)
+            is Input.Assignment -> calculator
+                .assign(input.identifier, input.expression)
                 .onFailure { io.write(it) }
 
             is Input.Command -> handleCommand(input.type)

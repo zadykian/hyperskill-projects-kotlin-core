@@ -11,17 +11,16 @@ object DisplayText {
             """.trimIndent()
 
     const val EXIT_TEXT = "Bye"
+}
 
-    object Errors {
-        const val UNKNOWN_COMMAND = "Unknown command"
-        const val UNKNOWN_IDENTIFIER = "Unknown identifier"
+object Errors {
+    const val UNKNOWN_COMMAND = "Unknown command"
+    const val UNKNOWN_IDENTIFIER = "Unknown identifier"
 
-        const val INVALID_EXPRESSION = "Invalid expression"
-        const val INVALID_IDENTIFIER = "Invalid identifier"
-        const val INVALID_ASSIGNMENT = "Invalid assignment"
+    const val INVALID_IDENTIFIER = "Invalid identifier"
+    const val INVALID_ASSIGNMENT = "Invalid assignment"
 
-        fun unexpectedChar(char: Char, position: Int) = "Unexpected character '$char' at position '$position'"
+    const val UNEXPECTED_EOF = "Unexpected end of input!"
 
-        fun unexpectedToken(token: Token?) = "Unexpected token '${token}'!"
-    }
+    fun unexpectedChar(char: Char, position: Int) = "Unexpected character '$char' at position '$position'"
 }

@@ -3,8 +3,8 @@ package calculator
 class Calculator {
     private val declaredVariables = mutableMapOf<Identifier, Value>()
 
-    fun assign(assignment: Assignment): Result<Any> =
-        evaluate(assignment.expression).onSuccess { declaredVariables[assignment.identifier] = it }
+    fun assign(identifier: Identifier, expression: Expression): Result<Any> =
+        evaluate(expression).onSuccess { declaredVariables[identifier] = it }
 
     fun evaluate(expression: Expression): Result<Value> =
         when (expression) {
@@ -12,7 +12,7 @@ class Calculator {
 
             is Expression.Variable ->
                 declaredVariables[expression.identifier]?.let { Success(it) }
-                    ?: Failure(DisplayText.Errors.UNKNOWN_IDENTIFIER)
+                    ?: Failure(Errors.UNKNOWN_IDENTIFIER)
 
             is Expression.Unary -> when (expression.opertr) {
                 Operator.Plus -> evaluate(expression.operand)
