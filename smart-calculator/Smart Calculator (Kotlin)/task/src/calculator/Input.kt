@@ -9,5 +9,5 @@ sealed interface Input {
     class Expression(val expression: calculator.Expression) : Input
     class Assignment(val identifier: Identifier, val expression: calculator.Expression) : Input
     class Command(val type: CommandType) : Input
-    object Empty : Input
+    data object Empty : Input
 }

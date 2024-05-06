@@ -4,8 +4,8 @@ private object ExpressionParser {
     fun parse(iterator: TokenIterator): Result<Input.Expression> {
         fun nextRoot(nextToken: Token, currentRoot: Expression) =
             when (nextToken) {
-                is Token.Plus -> parseUnary(iterator).onSuccess { Expression.Binary(Operator.Plus, currentRoot, it) }
-                is Token.Minus -> parseUnary(iterator).onSuccess { Expression.Binary(Operator.Minus, currentRoot, it) }
+                is Token.Plus -> parseUnary(iterator).map { Expression.Binary(Operator.Plus, currentRoot, it) }
+                is Token.Minus -> parseUnary(iterator).map { Expression.Binary(Operator.Minus, currentRoot, it) }
                 else -> Errors.unexpectedToken(nextToken).failure()
             }
 
@@ -49,7 +49,7 @@ private object AssignmentParser {
 }
 
 private object CommandParser {
-    private val commands = CommandType.values().associateBy { it.name.lowercase() }
+    private val commands = CommandType.entries.associateBy { it.name.lowercase() }
 
     fun parse(iterator: TokenIterator): Result<Input.Command> =
         iterator
@@ -74,15 +74,21 @@ object Parser {
 
         val firstTwoTokens = iterator
             .nextOrFail()
-            .bind { fstToken -> iterator.nextOrFail().map { sndToken -> Pair(fstToken, sndToken) } }
+            .bind { fstToken ->
+                val second =
+                    if (iterator.hasNext()) iterator.next()
+                    else Success(null)
+
+                second.map { Pair(fstToken, it) }
+            }
 
         return firstTwoTokens.bind { parseTwo(it.first, it.second, iterator) }
     }
 
-    private fun parseTwo(first: Token, second: Token, iterator: TokenIterator): Result<Input> {
+    private fun parseTwo(first: Token, second: Token?, iterator: TokenIterator): Result<Input> {
         val resetIterator = iterator {
             yield(first.success())
-            yield(second.success())
+            second?.let { yield(it.success()) }
             yieldAll(iterator)
         }
 

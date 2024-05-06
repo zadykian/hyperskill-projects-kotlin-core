@@ -7,10 +7,10 @@ typealias TokenSequence = Sequence<Result<Token>>
 sealed interface Token {
     class Number(val value: Int) : Token
     class Word(val value: String) : Token
-    object Plus : Token
-    object Minus : Token
-    object Assignment : Token
-    object Slash : Token
+    data object Plus : Token
+    data object Minus : Token
+    data object Assignment : Token
+    data object Slash : Token
 }
 
 object Lexer {
