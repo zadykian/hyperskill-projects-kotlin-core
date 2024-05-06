@@ -13,9 +13,12 @@ object DisplayText {
     const val EXIT_TEXT = "Bye"
 
     object Errors {
+        const val UNKNOWN_COMMAND = "Unknown command"
+        const val UNKNOWN_IDENTIFIER = "Unknown identifier"
+
+        const val INVALID_EXPRESSION = "Invalid expression"
         const val INVALID_IDENTIFIER = "Invalid identifier"
         const val INVALID_ASSIGNMENT = "Invalid assignment"
-        const val UNKNOWN_IDENTIFIER = "Unknown identifier"
 
         fun unexpectedChar(char: Char, position: Int) = "Unexpected character '$char' at position '$position'"
 
