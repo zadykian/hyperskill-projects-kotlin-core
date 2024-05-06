@@ -18,6 +18,12 @@ inline fun <T, U> Result<T>.map(transform: (T) -> U): Result<U> =
         is Failure -> Failure(errorText)
     }
 
+inline fun <reified T> Result<T>.mapFailure(newMessage: () -> String): Result<T> =
+    when (this) {
+        is Success<T> -> this
+        is Failure -> Failure(newMessage())
+    }
+
 inline fun <T> Result<T>.onSuccess(action: (T) -> Unit): Result<T> {
     if (this is Success) action(this.value)
     return this
@@ -29,3 +35,5 @@ inline fun <T> Result<T>.onFailure(action: (String) -> Unit): Result<T> {
 }
 
 fun <T> T.success(): Result<T> = Success(this)
+
+fun <T> String.failure(): Result<T> = Failure(this)

@@ -10,8 +10,8 @@ typealias Value = Int
 sealed interface Expression {
     class Number(val value: Value) : Expression
     class Variable(val identifier: Identifier) : Expression
-    class Unary(val opertr: Operator, val operand: Expression) : Expression
-    class Binary(val opertr: Operator, val left: Expression, val right: Expression) : Expression
+    class Unary(val operator: Operator, val operand: Expression) : Expression
+    class Binary(val operator: Operator, val left: Expression, val right: Expression) : Expression
 }
 
 class Identifier private constructor(private val value: String) {
@@ -29,7 +29,7 @@ class Identifier private constructor(private val value: String) {
         private val regex = Regex("^[a-zA-Z]+$")
 
         fun tryParse(string: String): Result<Identifier> =
-            if (regex.matches(string)) Success(Identifier(string))
-            else Failure("Identifier can contain only Latin characters!")
+            if (regex.matches(string)) Identifier(string).success()
+            else Errors.INVALID_IDENTIFIER.failure()
     }
 }

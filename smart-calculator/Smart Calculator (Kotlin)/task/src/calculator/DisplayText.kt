@@ -23,4 +23,6 @@ object Errors {
     const val UNEXPECTED_EOF = "Unexpected end of input!"
 
     fun unexpectedChar(char: Char, position: Int) = "Unexpected character '$char' at position '$position'"
+
+    fun unexpectedToken(token: Token?) = "Unexpected token '$token'"
 }

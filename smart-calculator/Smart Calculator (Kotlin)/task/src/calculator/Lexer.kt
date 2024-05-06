@@ -6,11 +6,11 @@ typealias TokenSequence = Sequence<Result<Token>>
 
 sealed interface Token {
     class Number(val value: Int) : Token
-    class Identifier(val value: calculator.Identifier) : Token
+    class Word(val value: String) : Token
     object Plus : Token
     object Minus : Token
     object Assignment : Token
-    object CommandPrefix : Token
+    object Slash : Token
 }
 
 object Lexer {
@@ -32,7 +32,7 @@ object Lexer {
                 char == '+' -> yield(Token.Plus.success())
                 char == '-' -> yield(Token.Minus.success())
                 char == '=' -> yield(Token.Assignment.success())
-                char == '/' -> yield(Token.CommandPrefix.success())
+                char == '/' -> yield(Token.Slash.success())
                 char.isDigit() -> {
                     val uIntVal = advanceWhile { it.isDigit() }.toIntOrNull()
                     yield(uIntVal?.let { Token.Number(it).success() } ?: unexpected())
@@ -42,14 +42,10 @@ object Lexer {
                     }
                 }
 
-                char.isIdentifierChar() ->
-                    advanceWhile { !it.isWhitespace() && !it.isOperator() }
-                        .let { Identifier.tryParse(it) }
-                        .onSuccess { yield(Token.Identifier(it).success()) }
-                        .onFailure {
-                            yield(Failure(Errors.INVALID_IDENTIFIER))
-                            return@sequence
-                        }
+                char.isIdentifierChar() -> {
+                    val word = advanceWhile { !it.isWhitespace() && !it.isOperator() }
+                    yield(Token.Word(word).success())
+                }
 
                 char.isWhitespace() -> Unit
 
