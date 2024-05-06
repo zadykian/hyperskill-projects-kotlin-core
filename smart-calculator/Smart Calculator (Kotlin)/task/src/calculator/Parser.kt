@@ -62,7 +62,7 @@ private object CommandParser {
 }
 
 object Parser {
-    // I -> C | A | E
+    // I -> C | A | E | _
     // C -> / ID
     // A -> ID = E
     // E -> U { +|- U }*
@@ -73,21 +73,15 @@ object Parser {
         val iterator = tokens.iterator()
 
         val firstTwoTokens = iterator
-            .nextOrFail()
-            .bind { fstToken ->
-                val second =
-                    if (iterator.hasNext()) iterator.next()
-                    else Success(null)
-
-                second.map { Pair(fstToken, it) }
-            }
+            .nextOrNull()
+            .bind { fstToken -> iterator.nextOrNull().map { Pair(fstToken, it) } }
 
         return firstTwoTokens.bind { parseTwo(it.first, it.second, iterator) }
     }
 
-    private fun parseTwo(first: Token, second: Token?, iterator: TokenIterator): Result<Input> {
+    private fun parseTwo(first: Token?, second: Token?, iterator: TokenIterator): Result<Input> {
         val resetIterator = iterator {
-            yield(first.success())
+            first?.let { yield(it.success()) }
             second?.let { yield(it.success()) }
             yieldAll(iterator)
         }
@@ -95,10 +89,13 @@ object Parser {
         return when {
             first == Token.Slash -> CommandParser.parse(resetIterator)
             second == Token.Assignment -> AssignmentParser.parse(resetIterator)
+            first == null && second == null -> Input.Empty.success()
             else -> ExpressionParser.parse(resetIterator)
         }
     }
 }
+
+private fun <T> Iterator<Result<T>>.nextOrNull() = if (hasNext()) next() else Success(null)
 
 private fun <T> Iterator<Result<T>>.nextOrFail() = if (hasNext()) next() else Failure(Errors.UNEXPECTED_EOF)
 
