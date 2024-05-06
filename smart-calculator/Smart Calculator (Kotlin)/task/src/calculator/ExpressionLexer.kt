@@ -5,8 +5,7 @@ typealias TokenIterator = Iterator<Result<Token>>
 typealias TokenSequence = Sequence<Result<Token>>
 
 sealed interface Token {
-    @JvmInline
-    value class Number(val value: UInt) : Token
+    class Number(val value: Int) : Token
     object Plus : Token
     object Minus : Token
 }
@@ -28,7 +27,7 @@ object ExpressionLexer {
                             index++
                             input[index]
                         } else null
-                    }.joinToString(separator = "").toUIntOrNull()
+                    }.joinToString(separator = "").toIntOrNull()
 
                     yield(uIntVal?.let { Token.Number(it).success() } ?: unexpected())
 

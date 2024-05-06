@@ -1,26 +1,22 @@
 package calculator
 
 object InputParser {
+    private val commandPattern = Regex("^\\s*/(?<cmd>[a-zA-Z]+)\\s*$")
     private val commands = CommandType.values().associateBy { it.name.lowercase() }
 
-    fun parse(input: String): Input = input
-        .trim()
-        .lowercase()
-        .let {
-            when {
-                it.isEmpty() -> Input.Empty
+    fun parse(input: String): Result<Input> =
+        when {
+            input.isBlank() -> Input.Empty.success()
 
-                it[0] == '/' -> it
-                    .removePrefix("/")
-                    .let { cmd -> commands[cmd] }
-                    ?.let(Input::Command)
-                    ?: Input.Error(ErrorType.UnknownCommand)
+            commandPattern.matches(input) -> {
+                val commandName = commandPattern.matchEntire(input)!!.groups["cmd"]!!.value.lowercase()
+                val command = commands[commandName]
+                command?.let { cmd -> Input.Command(cmd).success() } ?: Failure(DisplayText.Errors.UNKNOWN_COMMAND)
+            }
 
-                else -> it
-                    .let(ExpressionLexer::tokenize)
-                    .let(ExpressionParser::parse)
-                    ?.let(Input::ArithmeticExpression)
-                    ?: Input.Error(ErrorType.InvalidExpression)
+            else -> {
+                val parsed = ExpressionLexer.tokenize(input).let { ExpressionParser.parse(it) }
+                parsed.map { expr -> Input.ArithmeticExpression(expr) }
             }
         }
 }

@@ -1,6 +1,3 @@
 package calculator
 
-interface IO {
-    fun read(): String
-    fun write(value: String)
-}
+class IO(val read: () -> String, val write: (String) -> Unit)

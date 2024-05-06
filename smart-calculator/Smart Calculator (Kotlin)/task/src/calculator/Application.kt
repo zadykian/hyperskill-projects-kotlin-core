@@ -5,27 +5,43 @@ class Application(
     private val io: IO
 ) {
     tailrec fun run() {
-        val inputString = io.read()
-        val parsed = InputParser.parse(inputString)
-
-        when (parsed) {
-            is Input.ArithmeticExpression -> calculator.evaluate(parsed.expression).onFailure { io.write(it) }
-
-            is Input.VariableAssigment -> calculator.assign(parsed.assignment).onFailure { io.write(it) }
-
-            is Input.Command -> when (parsed.type) {
-                CommandType.Help -> io.write(DisplayText.helpText)
-                CommandType.Exit -> io.write(DisplayText.EXIT_TEXT)
+        val runNext = when (val parsed = InputParser.parse(io.read())) {
+            is Success -> {
+                handleInput(parsed.value)
+                !parsed.value.isExitCommand()
             }
 
-            is Input.Error -> io.write(parsed.type.displayText)
-            is Input.Empty -> Unit
+            is Failure -> {
+                io.write(parsed.errorText)
+                true
+            }
         }
 
-        val exit = parsed is Input.Command && parsed.type == CommandType.Exit
-
-        if (!exit) {
+        if (runNext) {
             run()
         }
     }
+
+    private fun handleInput(input: Input): Any =
+        when (input) {
+            is Input.ArithmeticExpression -> calculator
+                .evaluate(input.expression)
+                .onSuccess { io.write(it.toString()) }
+                .onFailure { io.write(it) }
+
+            is Input.VariableAssigment -> calculator
+                .assign(input.assignment)
+                .onFailure { io.write(it) }
+
+            is Input.Command -> handleCommand(input.type)
+            is Input.Empty -> Unit
+        }
+
+    private fun handleCommand(commandType: CommandType) =
+        when (commandType) {
+            CommandType.Help -> io.write(DisplayText.helpText)
+            CommandType.Exit -> io.write(DisplayText.EXIT_TEXT)
+        }
+
+    private fun Input.isExitCommand() = this is Input.Command && type == CommandType.Exit
 }
