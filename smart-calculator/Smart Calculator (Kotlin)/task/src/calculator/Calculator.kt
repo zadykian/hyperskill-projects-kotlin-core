@@ -1,5 +1,7 @@
 package calculator
 
+import kotlin.math.pow
+
 class Calculator {
     private val declaredVariables = mutableMapOf<Identifier, Value>()
 
@@ -15,8 +17,8 @@ class Calculator {
                     ?: Failure(Errors.UNKNOWN_IDENTIFIER)
 
             is Expression.Unary -> when (expression.operator) {
-                Operator.Plus -> evaluate(expression.operand)
-                Operator.Minus -> evaluate(expression.operand).map { it.unaryMinus() }
+                UnaryOp.Plus -> evaluate(expression.operand)
+                UnaryOp.Negation -> evaluate(expression.operand).map { it.unaryMinus() }
             }
 
             is Expression.Binary ->
@@ -25,9 +27,12 @@ class Calculator {
                     .map(operationOf(expression.operator))
         }
 
-    private fun operationOf(operator: Operator): (Pair<Value, Value>) -> Value =
+    private fun operationOf(operator: BinaryOp): (Pair<Value, Value>) -> Value =
         when (operator) {
-            Operator.Plus -> { p -> p.first + p.second }
-            Operator.Minus -> { p -> p.first - p.second }
+            BinaryOp.Addition -> { p -> p.first + p.second }
+            BinaryOp.Subtraction -> { p -> p.first - p.second }
+            BinaryOp.Multiplication -> { p -> p.first * p.second }
+            BinaryOp.Division -> { p -> p.first / p.second }
+            BinaryOp.Power -> { p -> p.first.toDouble().pow(p.second.toDouble()).toInt() }
         }
 }

@@ -9,8 +9,12 @@ sealed interface Token {
     class Word(val value: String) : Token
     data object Plus : Token
     data object Minus : Token
-    data object Assignment : Token
+    data object Asterisk : Token
     data object Slash : Token
+    data object Attic : Token
+    data object Equals : Token
+    data object OpeningParen : Token
+    data object ClosingParen : Token
 }
 
 object Lexer {
@@ -31,8 +35,13 @@ object Lexer {
             when {
                 char == '+' -> yield(Token.Plus.success())
                 char == '-' -> yield(Token.Minus.success())
-                char == '=' -> yield(Token.Assignment.success())
+                char == '*' -> yield(Token.Asterisk.success())
                 char == '/' -> yield(Token.Slash.success())
+                char == '^' -> yield(Token.Attic.success())
+                char == '=' -> yield(Token.Equals.success())
+                char == '(' -> yield(Token.OpeningParen.success())
+                char == ')' -> yield(Token.ClosingParen.success())
+
                 char.isDigit() -> {
                     val uIntVal = advanceWhile { it.isDigit() }.toIntOrNull()
                     yield(uIntVal?.let { Token.Number(it).success() } ?: unexpected())

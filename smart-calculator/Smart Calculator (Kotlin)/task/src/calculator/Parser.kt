@@ -4,8 +4,8 @@ private object ExpressionParser {
     fun parse(iterator: TokenIterator): Result<Command.EvalExpression> {
         fun nextRoot(nextToken: Token, currentRoot: Expression) =
             when (nextToken) {
-                is Token.Plus -> parseUnary(iterator).map { Expression.Binary(Operator.Plus, currentRoot, it) }
-                is Token.Minus -> parseUnary(iterator).map { Expression.Binary(Operator.Minus, currentRoot, it) }
+                is Token.Plus -> parseUnary(iterator).map { Expression.Binary(BinaryOp.Addition, currentRoot, it) }
+                is Token.Minus -> parseUnary(iterator).map { Expression.Binary(BinaryOp.Subtraction, currentRoot, it) }
                 else -> Errors.unexpectedToken(nextToken).failure()
             }
 
@@ -28,8 +28,8 @@ private object ExpressionParser {
                 when (token) {
                     is Token.Number -> Expression.Number(token.value).success()
                     is Token.Word -> Identifier.tryParse(token.value).map { Expression.Variable(it) }
-                    is Token.Plus -> parseUnary(iterator).map { Expression.Unary(Operator.Plus, it) }
-                    is Token.Minus -> parseUnary(iterator).map { Expression.Unary(Operator.Minus, it) }
+                    is Token.Plus -> parseUnary(iterator).map { Expression.Unary(UnaryOp.Plus, it) }
+                    is Token.Minus -> parseUnary(iterator).map { Expression.Unary(UnaryOp.Negation, it) }
                     else -> Errors.unexpectedToken(token).failure()
                 }
             }
@@ -42,7 +42,7 @@ private object AssignmentParser {
             .bind { Identifier.tryParse(it.value) }
             .bind { id ->
                 iterator
-                    .nextOf<Token.Assignment>()
+                    .nextOf<Token.Equals>()
                     .bind { ExpressionParser.parse(iterator).mapFailure { Errors.INVALID_ASSIGNMENT } }
                     .map { Command.AssignToIdentifier(id, it.expression) }
             }
@@ -94,7 +94,7 @@ object Parser {
 
         return when {
             first == Token.Slash -> NamedCommandParser.parse(resetIterator)
-            second == Token.Assignment -> AssignmentParser.parse(resetIterator)
+            second == Token.Equals -> AssignmentParser.parse(resetIterator)
             first == null && second == null -> Command.Empty.success()
             else -> ExpressionParser.parse(resetIterator)
         }
