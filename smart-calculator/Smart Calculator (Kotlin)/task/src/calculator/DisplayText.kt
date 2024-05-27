@@ -1,16 +1,25 @@
 package calculator
 
 object DisplayText {
-    val helpText =
+    fun help() =
         """
-            Welcome to Hyperskill Calculator!
-            Usage:
-                [expression] - evaluate an arithmetic expression. Example: 2 + 4 - 1
-                /help - display help info
-                /exit - exit program
-            """.trimIndent()
+        |Welcome to Hyperskill Calculator!
+        |Usage:
+        |${displayCommands()}
+        """.trimMargin()
 
-    const val EXIT_TEXT = "Bye"
+    private fun displayCommands() =
+        Command
+            .nonEmptyClasses()
+            .map {
+                val name = it.commandNameOrNull()
+                val displayText = it.commandDisplayText()
+                if (name == null) displayText else "/$name - $displayText"
+            }
+            .sorted()
+            .joinToString(separator = System.lineSeparator()) { "    $it" }
+
+    fun exit() = "Bye"
 }
 
 object Errors {
