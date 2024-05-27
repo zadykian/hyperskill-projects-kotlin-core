@@ -18,6 +18,17 @@ sealed interface Token {
 }
 
 object Lexer {
+    private val opTokens = mapOf(
+        '+' to Token.Plus,
+        '-' to Token.Minus,
+        '*' to Token.Asterisk,
+        '/' to Token.Slash,
+        '^' to Token.Attic,
+        '=' to Token.Equals,
+        '(' to Token.OpeningParen,
+        ')' to Token.ClosingParen,
+    )
+
     fun tokenize(input: String): TokenSequence = sequence {
         var index = 0
         while (index <= input.lastIndex) {
@@ -33,28 +44,18 @@ object Lexer {
             }.joinToString(separator = "")
 
             when {
-                char == '+' -> yield(Token.Plus.success())
-                char == '-' -> yield(Token.Minus.success())
-                char == '*' -> yield(Token.Asterisk.success())
-                char == '/' -> yield(Token.Slash.success())
-                char == '^' -> yield(Token.Attic.success())
-                char == '=' -> yield(Token.Equals.success())
-                char == '(' -> yield(Token.OpeningParen.success())
-                char == ')' -> yield(Token.ClosingParen.success())
-
                 char.isDigit() -> {
                     val uIntVal = advanceWhile { it.isDigit() }.toIntOrNull()
                     yield(uIntVal?.let { Token.Number(it).success() } ?: unexpected())
-
-                    if (uIntVal == null) {
-                        return@sequence
-                    }
+                    if (uIntVal == null) return@sequence
                 }
 
                 char.isWordChar() -> {
                     val word = advanceWhile { it.isWordChar() }
                     yield(Token.Word(word).success())
                 }
+
+                opTokens.containsKey(char) -> yield(opTokens.getValue(char).success())
 
                 char.isWhitespace() -> Unit
 

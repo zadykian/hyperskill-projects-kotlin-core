@@ -1,38 +1,44 @@
 package calculator
 
 private object ExpressionParser {
+    val tokensPrecedence = mapOf(
+        Token.Plus to 0,
+        Token.Minus to 0,
+        Token.Asterisk to 1,
+        Token.Slash to 1,
+        Token.Attic to 2,
+    )
+
     fun parse(iterator: TokenIterator): Result<Command.EvalExpression> {
-        fun nextRoot(nextToken: Token, currentRoot: Expression) =
-            when (nextToken) {
-                is Token.Plus -> parseUnary(iterator).map { Expression.Binary(BinaryOp.Addition, currentRoot, it) }
-                is Token.Minus -> parseUnary(iterator).map { Expression.Binary(BinaryOp.Subtraction, currentRoot, it) }
-                else -> Errors.unexpectedToken(nextToken).failure()
-            }
-
-        var root = parseUnary(iterator)
-
-        while (root is Success<Expression> && iterator.hasNext()) {
-            root = when (val result = iterator.next()) {
-                is Success -> nextRoot(result.value, root.value)
-                is Failure -> result.errorText.failure()
-            }
-        }
-
-        return root.map { Command.EvalExpression(it) }
+        TODO()
     }
 
-    private fun parseUnary(iterator: TokenIterator): Result<Expression> =
-        iterator
-            .nextOrFail()
-            .bind { token ->
-                when (token) {
-                    is Token.Number -> Expression.Number(token.value).success()
-                    is Token.Word -> Identifier.tryParse(token.value).map { Expression.Variable(it) }
-                    is Token.Plus -> parseUnary(iterator).map { Expression.Unary(UnaryOp.Plus, it) }
-                    is Token.Minus -> parseUnary(iterator).map { Expression.Unary(UnaryOp.Negation, it) }
-                    else -> Errors.unexpectedToken(token).failure()
+    private fun convertFromInfixToPostfix(tokens: TokenSequence): Result<List<Token>> {
+        val operatorsStack = ArrayDeque<Token>()
+        val postfixTokens = mutableListOf<Token>()
+
+        for (tokenResult in tokens) {
+            tokenResult
+                .onSuccess {
+                    when (it) {
+                        is Token.Number, is Token.Word -> postfixTokens.add(it)
+                        Token.Plus -> TODO()
+
+                        Token.Asterisk -> TODO()
+                        Token.Attic -> TODO()
+
+                        Token.OpeningParen -> TODO()
+                        Token.ClosingParen -> TODO()
+                        Token.Equals -> TODO()
+                        Token.Minus -> TODO()
+                        Token.Slash -> TODO()
+                    }
                 }
-            }
+                .onFailure { return it.failure() }
+        }
+
+        return postfixTokens.success()
+    }
 }
 
 private object AssignmentParser {
