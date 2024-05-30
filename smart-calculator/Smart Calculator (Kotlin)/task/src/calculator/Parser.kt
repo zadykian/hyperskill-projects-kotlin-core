@@ -1,12 +1,17 @@
 package calculator
 
 private object ExpressionParser {
-    val tokensPrecedence = mapOf(
-        Token.Plus to 0,
-        Token.Minus to 0,
-        Token.Asterisk to 1,
-        Token.Slash to 1,
-        Token.Attic to 2,
+    val tokensToUnaryOps = mapOf(
+        Token.Plus to Operator.Unary.Plus,
+        Token.Minus to Operator.Unary.Negation,
+    )
+
+    val tokensToBinaryOps = mapOf(
+        Token.Plus to Operator.Binary.Addition,
+        Token.Minus to Operator.Binary.Subtraction,
+        Token.Asterisk to Operator.Binary.Multiplication,
+        Token.Slash to Operator.Binary.Division,
+        Token.Attic to Operator.Binary.Power,
     )
 
     fun parse(iterator: TokenIterator): Result<Command.EvalExpression> {
@@ -74,13 +79,6 @@ private object NamedCommandParser {
 }
 
 object Parser {
-    // I -> C | A | E | _
-    // C -> / ID
-    // A -> ID = E
-    // E -> U { +|- U }*
-    // U -> { +|- }* { { 0..9 }+ | ID }
-    // ID -> [a-zA-Z]+
-
     fun parse(tokens: TokenSequence): Result<Command> {
         val iterator = tokens.iterator()
 

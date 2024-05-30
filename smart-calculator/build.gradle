@@ -5,7 +5,7 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.23"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$hs.kotlin.version"
     }
 }
 
@@ -41,6 +41,8 @@ subprojects {
 
     dependencies {
         implementation 'org.jetbrains.kotlin:kotlin-reflect:2.0.0'
+        implementation 'io.arrow-kt:arrow-core:1.2.4'
+        implementation 'io.arrow-kt:arrow-fx-coroutines:1.2.4'
         testImplementation 'com.github.hyperskill:hs-test:release-SNAPSHOT'
     }
 

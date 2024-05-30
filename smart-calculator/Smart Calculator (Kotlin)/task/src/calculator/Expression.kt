@@ -1,16 +1,20 @@
 package calculator
 
-enum class UnaryOp {
-    Plus,
-    Negation,
-}
+sealed interface Operator {
+    val priority: Byte
 
-enum class BinaryOp {
-    Addition,
-    Subtraction,
-    Multiplication,
-    Division,
-    Power,
+    enum class Unary(override val priority: Byte) : Operator {
+        Plus(2),
+        Negation(2),
+    }
+
+    enum class Binary(override val priority: Byte) : Operator {
+        Addition(0),
+        Subtraction(0),
+        Multiplication(1),
+        Division(1),
+        Power(2),
+    }
 }
 
 typealias Value = Int
@@ -18,8 +22,8 @@ typealias Value = Int
 sealed interface Expression {
     class Number(val value: Value) : Expression
     class Variable(val identifier: Identifier) : Expression
-    class Unary(val operator: UnaryOp, val operand: Expression) : Expression
-    class Binary(val operator: BinaryOp, val left: Expression, val right: Expression) : Expression
+    class Unary(val operator: Operator.Unary, val operand: Expression) : Expression
+    class Binary(val operator: Operator.Binary, val left: Expression, val right: Expression) : Expression
 }
 
 class Identifier private constructor(private val value: String) {

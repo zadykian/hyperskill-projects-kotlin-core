@@ -17,8 +17,8 @@ class Calculator {
                     ?: Failure(Errors.UNKNOWN_IDENTIFIER)
 
             is Expression.Unary -> when (expression.operator) {
-                UnaryOp.Plus -> evaluate(expression.operand)
-                UnaryOp.Negation -> evaluate(expression.operand).map { it.unaryMinus() }
+                Operator.Unary.Plus -> evaluate(expression.operand)
+                Operator.Unary.Negation -> evaluate(expression.operand).map { it.unaryMinus() }
             }
 
             is Expression.Binary ->
@@ -27,12 +27,12 @@ class Calculator {
                     .map(operationOf(expression.operator))
         }
 
-    private fun operationOf(operator: BinaryOp): (Pair<Value, Value>) -> Value =
+    private fun operationOf(operator: Operator.Binary): (Pair<Value, Value>) -> Value =
         when (operator) {
-            BinaryOp.Addition -> { p -> p.first + p.second }
-            BinaryOp.Subtraction -> { p -> p.first - p.second }
-            BinaryOp.Multiplication -> { p -> p.first * p.second }
-            BinaryOp.Division -> { p -> p.first / p.second }
-            BinaryOp.Power -> { p -> p.first.toDouble().pow(p.second.toDouble()).toInt() }
+            Operator.Binary.Addition -> { p -> p.first + p.second }
+            Operator.Binary.Subtraction -> { p -> p.first - p.second }
+            Operator.Binary.Multiplication -> { p -> p.first * p.second }
+            Operator.Binary.Division -> { p -> p.first / p.second }
+            Operator.Binary.Power -> { p -> p.first.toDouble().pow(p.second.toDouble()).toInt() }
         }
 }
