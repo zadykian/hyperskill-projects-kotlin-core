@@ -1,8 +1,10 @@
 package calculator
 
-typealias TokenIterator = Iterator<Result<Token>>
+import arrow.core.Either
+import arrow.core.left
+import arrow.core.right
 
-typealias TokenSequence = Sequence<Result<Token>>
+typealias LexerError = String
 
 sealed interface Token {
     class Number(val value: Int) : Token
@@ -29,46 +31,38 @@ object Lexer {
         ')' to Token.ClosingParen,
     )
 
-    fun tokenize(input: String): TokenSequence = sequence {
+    fun tokenize(input: CharSequence): Either<LexerError, List<Token>> {
+        val tokens = mutableListOf<Token>()
+
         var index = 0
         while (index <= input.lastIndex) {
             val char = input[index]
 
-            fun unexpected() = Failure<Token>(Errors.unexpectedChar(char, index))
-
-            fun advanceWhile(predicate: (Char) -> Boolean) = generateSequence(char) {
-                if (index < input.lastIndex && predicate(input[index + 1])) {
-                    index++
-                    input[index]
-                } else null
-            }.joinToString(separator = "")
-
-            when {
+            val (nextToken, charsConsumed) = when {
                 char.isDigit() -> {
-                    val uIntVal = advanceWhile { it.isDigit() }.toIntOrNull()
-                    yield(uIntVal?.let { Token.Number(it).success() } ?: unexpected())
-                    if (uIntVal == null) return@sequence
+                    val uIntString = input.takeFromWhile(index) { it.isDigit() }
+                    Pair(Token.Number(uIntString.toInt()), uIntString.length)
                 }
 
                 char.isWordChar() -> {
-                    val word = advanceWhile { it.isWordChar() }
-                    yield(Token.Word(word).success())
+                    val word = input.takeFromWhile(index) { it.isWordChar() }
+                    Pair(Token.Word(word), word.length)
                 }
 
-                opTokens.containsKey(char) -> yield(opTokens.getValue(char).success())
-
-                char.isWhitespace() -> Unit
-
-                else -> {
-                    yield(unexpected())
-                    return@sequence
-                }
+                opTokens.containsKey(char) -> Pair(opTokens.getValue(char), 1)
+                char.isWhitespace() -> Pair(null, 1)
+                else -> return Errors.unexpectedChar(char).left()
             }
-            index++
+
+            index += charsConsumed
+            nextToken?.let { tokens.add(it) }
         }
+
+        return tokens.right()
     }
 
-    private fun Char.isWordChar() = !this.isWhitespace() && !this.isOperator()
+    private fun CharSequence.takeFromWhile(startIndex: Int, predicate: (Char) -> Boolean) =
+        drop(startIndex).takeWhile(predicate).toString()
 
-    private fun Char.isOperator() = this == '+' || this == '-' || this == '=' || this == '/'
+    private fun Char.isWordChar() = !this.isWhitespace() && !opTokens.containsKey(this)
 }
