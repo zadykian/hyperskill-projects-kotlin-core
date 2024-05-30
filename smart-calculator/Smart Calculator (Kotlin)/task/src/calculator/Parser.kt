@@ -1,6 +1,18 @@
 package calculator
 
-private object ExpressionParser {
+import arrow.core.Either
+import arrow.core.left
+import arrow.core.raise.either
+import arrow.core.raise.ensure
+
+typealias ParseError = String
+
+private interface CommandParser<out TCommand : Command> {
+    fun canTry(tokens: List<Token>): Boolean
+    fun parse(tokens: List<Token>): Either<ParseError, TCommand>
+}
+
+private object ExpressionParser : CommandParser<Command.EvalExpression> {
     val tokensToUnaryOps = mapOf(
         Token.Plus to Operator.Unary.Plus,
         Token.Minus to Operator.Unary.Negation,
@@ -14,11 +26,13 @@ private object ExpressionParser {
         Token.Attic to Operator.Binary.Power,
     )
 
-    fun parse(iterator: TokenIterator): Result<Command.EvalExpression> {
+    override fun canTry(tokens: List<Token>) = tokens.isNotEmpty() && tokens[0] != Token.Slash
+
+    override fun parse(tokens: List<Token>): Either<ParseError, Command.EvalExpression> {
         TODO()
     }
 
-    private fun convertFromInfixToPostfix(tokens: TokenSequence): Result<List<Token>> {
+    private fun convertFromInfixToPostfix(tokens: List<Token>): Result<List<Token>> {
         val operatorsStack = ArrayDeque<Token>()
         val postfixTokens = mutableListOf<Token>()
 
@@ -46,20 +60,21 @@ private object ExpressionParser {
     }
 }
 
-private object AssignmentParser {
-    fun parse(iterator: TokenIterator): Result<Command.AssignToIdentifier> =
-        iterator
-            .nextOf<Token.Word>()
-            .bind { Identifier.tryParse(it.value) }
-            .bind { id ->
-                iterator
-                    .nextOf<Token.Equals>()
-                    .bind { ExpressionParser.parse(iterator).mapFailure { Errors.INVALID_ASSIGNMENT } }
-                    .map { Command.AssignToIdentifier(id, it.expression) }
-            }
+private object AssignmentParser : CommandParser<Command.AssignToIdentifier> {
+    override fun canTry(tokens: List<Token>) = tokens.size >= 3 && tokens[1] == Token.Equals
+
+    override fun parse(tokens: List<Token>) = either {
+        ensure(tokens.size >= 3 && tokens[0] is Token.Word && tokens[1] is Token.Equals) {
+            Errors.INVALID_ASSIGNMENT
+        }
+
+        val identifier = Identifier.tryParse((tokens[0] as Token.Word).value).bind()
+        val expression = ExpressionParser.parse(tokens.drop(2)).bind().expression
+        Command.AssignToIdentifier(identifier, expression)
+    }
 }
 
-private object NamedCommandParser {
+private object NamedCommandParser : CommandParser<Command> {
     private val namedCommands =
         Command
             .nonEmptyClasses()
@@ -69,48 +84,28 @@ private object NamedCommandParser {
             }
             .toMap()
 
-    fun parse(iterator: TokenIterator): Result<Command> =
-        iterator
-            .nextOf<Token.Slash>()
-            .bind { iterator.nextOf<Token.Word>() }
-            .bind {
-                namedCommands[it.value.lowercase()]?.success() ?: Errors.UNKNOWN_COMMAND.failure()
-            }
+    override fun canTry(tokens: List<Token>) = tokens.firstOrNull() == Token.Slash
+
+    override fun parse(tokens: List<Token>) = either {
+        ensure(tokens.size == 2 && tokens[0] is Token.Slash && tokens[1] is Token.Word) {
+            Errors.INVALID_COMMAND_INVOCATION
+        }
+
+        val commandName = (tokens[0] as Token.Word).value.lowercase()
+        namedCommands[commandName] ?: raise(Errors.UNKNOWN_COMMAND)
+    }
 }
 
 object Parser {
-    fun parse(tokens: TokenSequence): Result<Command> {
-        val iterator = tokens.iterator()
+    private val parsers = listOf(
+        NamedCommandParser,
+        AssignmentParser,
+        ExpressionParser,
+    )
 
-        val firstTwoTokens = iterator
-            .nextOrNull()
-            .bind { fstToken -> iterator.nextOrNull().map { Pair(fstToken, it) } }
-
-        return firstTwoTokens.bind { parseTwo(it.first, it.second, iterator) }
-    }
-
-    private fun parseTwo(first: Token?, second: Token?, iterator: TokenIterator): Result<Command> {
-        val resetIterator = iterator {
-            first?.let { yield(it.success()) }
-            second?.let { yield(it.success()) }
-            yieldAll(iterator)
-        }
-
-        return when {
-            first == Token.Slash -> NamedCommandParser.parse(resetIterator)
-            second == Token.Equals -> AssignmentParser.parse(resetIterator)
-            first == null && second == null -> Command.Empty.success()
-            else -> ExpressionParser.parse(resetIterator)
-        }
-    }
+    fun parse(tokens: List<Token>): Either<ParseError, Command> =
+        parsers
+            .firstOrNull { it.canTry(tokens) }
+            ?.parse(tokens)
+            ?: Errors.INVALID_INPUT.left()
 }
-
-private fun <T> Iterator<Result<T>>.nextOrNull() = if (hasNext()) next() else Success(null)
-
-private fun <T> Iterator<Result<T>>.nextOrFail() = if (hasNext()) next() else Failure(Errors.UNEXPECTED_EOF)
-
-private inline fun <reified T : Token> TokenIterator.nextOf(): Result<T> =
-    if (hasNext()) next().bind {
-        if (it is T) Success(it) else Errors.unexpectedToken(it).failure()
-    }
-    else Errors.UNEXPECTED_EOF.failure()

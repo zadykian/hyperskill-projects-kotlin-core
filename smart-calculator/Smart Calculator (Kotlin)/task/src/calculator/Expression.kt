@@ -1,5 +1,9 @@
 package calculator
 
+import arrow.core.Either
+import arrow.core.left
+import arrow.core.right
+
 sealed interface Operator {
     val priority: Byte
 
@@ -40,8 +44,8 @@ class Identifier private constructor(private val value: String) {
     companion object {
         private val regex = Regex("^[a-zA-Z]+$")
 
-        fun tryParse(string: String): Result<Identifier> =
-            if (regex.matches(string)) Identifier(string).success()
-            else Errors.INVALID_IDENTIFIER.failure()
+        fun tryParse(string: String): Either<String, Identifier> =
+            if (regex.matches(string)) Identifier(string).right()
+            else Errors.INVALID_IDENTIFIER.left()
     }
 }

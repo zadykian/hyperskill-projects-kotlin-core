@@ -1,38 +1,44 @@
 package calculator
 
+import arrow.core.Either
+import arrow.core.left
+import arrow.core.raise.either
+import arrow.core.right
 import kotlin.math.pow
+
+typealias CalculationError = String
 
 class Calculator {
     private val declaredVariables = mutableMapOf<Identifier, Value>()
 
-    fun assign(identifier: Identifier, expression: Expression): Result<Any> =
-        evaluate(expression).onSuccess { declaredVariables[identifier] = it }
+    fun assign(identifier: Identifier, expression: Expression) =
+        evaluate(expression).onRight { declaredVariables[identifier] = it }
 
-    fun evaluate(expression: Expression): Result<Value> =
+    fun evaluate(expression: Expression): Either<CalculationError, Value> =
         when (expression) {
-            is Expression.Number -> Success(expression.value)
+            is Expression.Number -> expression.value.right()
 
             is Expression.Variable ->
-                declaredVariables[expression.identifier]?.let { Success(it) }
-                    ?: Failure(Errors.UNKNOWN_IDENTIFIER)
+                declaredVariables[expression.identifier]?.right() ?: Errors.UNKNOWN_IDENTIFIER.left()
 
             is Expression.Unary -> when (expression.operator) {
                 Operator.Unary.Plus -> evaluate(expression.operand)
                 Operator.Unary.Negation -> evaluate(expression.operand).map { it.unaryMinus() }
             }
 
-            is Expression.Binary ->
-                evaluate(expression.left)
-                    .bind { leftVal -> evaluate(expression.right).map { rightVal -> Pair(leftVal, rightVal) } }
-                    .map(operationOf(expression.operator))
+            is Expression.Binary -> either {
+                val left = evaluate(expression.left).bind()
+                val right = evaluate(expression.right).bind()
+                operationOf(expression.operator).invoke(left, right)
+            }
         }
 
-    private fun operationOf(operator: Operator.Binary): (Pair<Value, Value>) -> Value =
+    private fun operationOf(operator: Operator.Binary): (Value, Value) -> Value =
         when (operator) {
-            Operator.Binary.Addition -> { p -> p.first + p.second }
-            Operator.Binary.Subtraction -> { p -> p.first - p.second }
-            Operator.Binary.Multiplication -> { p -> p.first * p.second }
-            Operator.Binary.Division -> { p -> p.first / p.second }
-            Operator.Binary.Power -> { p -> p.first.toDouble().pow(p.second.toDouble()).toInt() }
+            Operator.Binary.Addition -> { l, r -> l + r }
+            Operator.Binary.Subtraction -> { l, r -> l - r }
+            Operator.Binary.Multiplication -> { l, r -> l * r }
+            Operator.Binary.Division -> { l, r -> l / r }
+            Operator.Binary.Power -> { l, r -> l.toDouble().pow(r.toDouble()).toInt() }
         }
 }
