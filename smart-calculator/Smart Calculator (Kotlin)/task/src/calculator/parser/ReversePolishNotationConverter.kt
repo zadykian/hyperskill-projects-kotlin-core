@@ -112,6 +112,13 @@ object ReversePolishNotationConverter {
             }
         }
 
+        repeat(operatorsStack.size) {
+            val opToken = operatorsStack.removeLast()
+            ensure(opToken.token != Token.OpeningParen) { Errors.UNBALANCED_EXPRESSION }
+            val operator = opToken.getOperator().bind()
+            postfixTerms.add(PostfixTerm.Operator(operator))
+        }
+
         return postfixTerms.right()
     }
 }

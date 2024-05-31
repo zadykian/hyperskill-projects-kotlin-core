@@ -7,8 +7,14 @@ import arrow.core.right
 typealias LexerError = String
 
 sealed interface Token {
-    class Number(val value: Int) : Token
-    class Word(val value: String) : Token
+    class Number(val value: Int) : Token {
+        override fun toString() = value.toString()
+    }
+
+    class Word(val value: String) : Token {
+        override fun toString() = value
+    }
+
     data object Plus : Token
     data object Minus : Token
     data object Asterisk : Token
