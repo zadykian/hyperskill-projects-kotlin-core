@@ -50,7 +50,13 @@ subprojects {
         implementation 'org.jetbrains.kotlin:kotlin-reflect:2.0.0'
         implementation 'io.arrow-kt:arrow-core:1.2.4'
         implementation 'io.arrow-kt:arrow-fx-coroutines:1.2.4'
+
         testImplementation 'com.github.hyperskill:hs-test:release-SNAPSHOT'
+
+        testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.0'
+        testImplementation 'org.junit.jupiter:junit-jupiter-params:5.7.0'
+        testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.0'
+        testImplementation 'com.willowtreeapps.assertk:assertk:0.28.0'
     }
 
     configurations.all {
