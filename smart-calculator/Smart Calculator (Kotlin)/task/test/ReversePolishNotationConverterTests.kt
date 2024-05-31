@@ -5,8 +5,12 @@ import assertk.assertions.isEqualTo
 import calculator.Operator
 import calculator.parser.ParseError
 import calculator.parser.PostfixTerm
+import calculator.parser.PostfixTerm.Num
+import calculator.parser.PostfixTerm.Op
 import calculator.parser.ReversePolishNotationConverter
 import calculator.parser.Token
+import calculator.parser.Token.*
+import calculator.parser.Token.Number
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
 
@@ -29,25 +33,33 @@ class ReversePolishNotationConverterTests {
         @JvmStatic
         fun testCases() = listOf(
             PolishTestCase(
-                input = listOf(Token.Number(1)),
-                expected = listOf(PostfixTerm.Number(1)).right()
-            ),
-            PolishTestCase(
-                input = listOf(Token.Number(1), Token.Plus, Token.Number(2)),
+                input = listOf(
+                    Number(1)
+                ),
                 expected = listOf(
-                    PostfixTerm.Number(1),
-                    PostfixTerm.Number(2),
-                    PostfixTerm.Operator(Operator.Binary.Addition),
+                    Num(1)
                 ).right()
             ),
             PolishTestCase(
-                input = listOf(Token.Number(1), Token.Plus, Token.Number(2), Token.Asterisk, Token.Number(3)),
+                input = listOf(
+                    Number(1), Plus, Number(2)
+                ),
                 expected = listOf(
-                    PostfixTerm.Number(1),
-                    PostfixTerm.Number(2),
-                    PostfixTerm.Number(3),
-                    PostfixTerm.Operator(Operator.Binary.Multiplication),
-                    PostfixTerm.Operator(Operator.Binary.Addition),
+                    Num(1), Num(2), Op(Operator.Binary.Addition),
+                ).right()
+            ),
+            PolishTestCase(
+                input = listOf(
+                    Number(1), Plus, Number(2), Asterisk, Number(3)
+                ),
+                expected = listOf(
+                    Num(1), Num(2), Num(3), Op(Operator.Binary.Multiplication), Op(Operator.Binary.Addition),
+                ).right()
+            ),
+            PolishTestCase(
+                input = listOf(OpeningParen, Number(1), Plus, Number(2), ClosingParen, Asterisk, Number(3)),
+                expected = listOf(
+                    Num(1), Num(2), Op(Operator.Binary.Addition), Num(3), Op(Operator.Binary.Multiplication),
                 ).right()
             ),
         )

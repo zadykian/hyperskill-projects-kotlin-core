@@ -13,13 +13,13 @@ private data class OpToken(val token: Token, val isBinary: Boolean)
 
 interface PostfixTerm {
     @JvmInline
-    value class Number(val value: Value) : PostfixTerm
+    value class Num(val value: Value) : PostfixTerm
 
     @JvmInline
-    value class Identifier(val value: calculator.Identifier) : PostfixTerm
+    value class Id(val value: Identifier) : PostfixTerm
 
     @JvmInline
-    value class Operator(val value: calculator.Operator) : PostfixTerm
+    value class Op(val value: Operator) : PostfixTerm
 }
 
 object ReversePolishNotationConverter {
@@ -55,10 +55,10 @@ object ReversePolishNotationConverter {
 
         for (index in 0..tokens.lastIndex) {
             when (val token = tokens[index]) {
-                is Token.Number -> postfixTerms.add(PostfixTerm.Number(token.value))
+                is Token.Number -> postfixTerms.add(PostfixTerm.Num(token.value))
                 is Token.Word -> {
                     val identifier = Identifier.tryParse(token.value).bind()
-                    postfixTerms.add(PostfixTerm.Identifier(identifier))
+                    postfixTerms.add(PostfixTerm.Id(identifier))
                 }
 
                 Token.OpeningParen -> operatorsStack.addLast(OpToken(token, false))
@@ -70,7 +70,7 @@ object ReversePolishNotationConverter {
                         }
 
                         val operator = opToken.getOperator().bind()
-                        postfixTerms.add(PostfixTerm.Operator(operator))
+                        postfixTerms.add(PostfixTerm.Op(operator))
                     }
                 }
 
@@ -102,7 +102,7 @@ object ReversePolishNotationConverter {
                         }
                     ) {
                         val removedOperator = operatorsStack.removeLast().getOperator().bind()
-                        postfixTerms.add(PostfixTerm.Operator(removedOperator))
+                        postfixTerms.add(PostfixTerm.Op(removedOperator))
                     }
 
                     operatorsStack.addLast(opToken)
@@ -116,7 +116,7 @@ object ReversePolishNotationConverter {
             val opToken = operatorsStack.removeLast()
             ensure(opToken.token != Token.OpeningParen) { Errors.UNBALANCED_EXPRESSION }
             val operator = opToken.getOperator().bind()
-            postfixTerms.add(PostfixTerm.Operator(operator))
+            postfixTerms.add(PostfixTerm.Op(operator))
         }
 
         return postfixTerms.right()
