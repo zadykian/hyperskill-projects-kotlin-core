@@ -4,6 +4,7 @@ import arrow.core.Either
 import arrow.core.left
 import arrow.core.raise.either
 import arrow.core.right
+import calculator.parser.Errors
 import kotlin.math.pow
 
 typealias CalculationError = String

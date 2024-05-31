@@ -3,16 +3,17 @@ package calculator
 import arrow.core.Either
 import arrow.core.left
 import arrow.core.right
+import calculator.parser.Errors
 
 sealed interface Operator {
-    val priority: Byte
+    val precedence: Byte
 
-    enum class Unary(override val priority: Byte) : Operator {
+    enum class Unary(override val precedence: Byte) : Operator {
         Plus(2),
         Negation(2),
     }
 
-    enum class Binary(override val priority: Byte) : Operator {
+    enum class Binary(override val precedence: Byte) : Operator {
         Addition(0),
         Subtraction(0),
         Multiplication(1),

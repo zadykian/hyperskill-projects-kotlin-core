@@ -1,4 +1,4 @@
-package calculator
+package calculator.parser
 
 import arrow.core.Either
 import arrow.core.left

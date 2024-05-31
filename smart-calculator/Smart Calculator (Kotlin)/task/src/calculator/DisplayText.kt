@@ -22,18 +22,3 @@ object DisplayText {
     fun exit() = "Bye"
 }
 
-object Errors {
-    const val UNKNOWN_COMMAND = "Unknown command"
-    const val UNKNOWN_IDENTIFIER = "Unknown identifier"
-
-    const val INVALID_INPUT = "Invalid input"
-    const val INVALID_IDENTIFIER = "Invalid identifier"
-    const val INVALID_COMMAND_INVOCATION = "Invalid command invocation"
-    const val INVALID_ASSIGNMENT = "Invalid assignment"
-
-    const val UNEXPECTED_EOF = "Unexpected end of input!"
-
-    fun unexpectedChar(char: Char) = "Unexpected character '$char'"
-
-    fun unexpectedToken(token: Token?) = "Unexpected token '$token'"
-}
