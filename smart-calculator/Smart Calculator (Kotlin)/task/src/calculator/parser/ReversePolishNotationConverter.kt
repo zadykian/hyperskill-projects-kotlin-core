@@ -29,10 +29,10 @@ object ReversePolishNotationConverter {
     )
 
     private val tokensToBinaryOps = mapOf(
-        Token.Plus to Operator.Binary.Addition,
-        Token.Minus to Operator.Binary.Subtraction,
-        Token.Asterisk to Operator.Binary.Multiplication,
-        Token.Slash to Operator.Binary.Division,
+        Token.Plus to Operator.Binary.Add,
+        Token.Minus to Operator.Binary.Subtract,
+        Token.Asterisk to Operator.Binary.Multiply,
+        Token.Slash to Operator.Binary.Divide,
         Token.Attic to Operator.Binary.Power,
     )
 

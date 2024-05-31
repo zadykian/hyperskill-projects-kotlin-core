@@ -14,10 +14,10 @@ sealed interface Operator {
     }
 
     enum class Binary(override val precedence: Byte) : Operator {
-        Addition(0),
-        Subtraction(0),
-        Multiplication(1),
-        Division(1),
+        Add(0),
+        Subtract(0),
+        Multiply(1),
+        Divide(1),
         Power(2),
     }
 }

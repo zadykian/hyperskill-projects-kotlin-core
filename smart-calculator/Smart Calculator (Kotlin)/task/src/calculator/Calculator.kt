@@ -36,10 +36,10 @@ class Calculator {
 
     private fun operationOf(operator: Operator.Binary): (Value, Value) -> Value =
         when (operator) {
-            Operator.Binary.Addition -> { l, r -> l + r }
-            Operator.Binary.Subtraction -> { l, r -> l - r }
-            Operator.Binary.Multiplication -> { l, r -> l * r }
-            Operator.Binary.Division -> { l, r -> l / r }
+            Operator.Binary.Add -> { l, r -> l + r }
+            Operator.Binary.Subtract -> { l, r -> l - r }
+            Operator.Binary.Multiply -> { l, r -> l * r }
+            Operator.Binary.Divide -> { l, r -> l / r }
             Operator.Binary.Power -> { l, r -> l.toDouble().pow(r.toDouble()).toInt() }
         }
 }

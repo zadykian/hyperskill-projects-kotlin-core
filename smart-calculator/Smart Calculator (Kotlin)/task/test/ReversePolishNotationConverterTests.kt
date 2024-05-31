@@ -2,7 +2,8 @@ import arrow.core.Either
 import arrow.core.right
 import assertk.assertThat
 import assertk.assertions.isEqualTo
-import calculator.Operator
+import calculator.Operator.Binary
+import calculator.Operator.Unary
 import calculator.parser.ParseError
 import calculator.parser.PostfixTerm
 import calculator.parser.PostfixTerm.Num
@@ -42,24 +43,40 @@ class ReversePolishNotationConverterTests {
             ),
             PolishTestCase(
                 input = listOf(
-                    Number(1), Plus, Number(2)
+                    Minus, Number(1)
                 ),
                 expected = listOf(
-                    Num(1), Num(2), Op(Operator.Binary.Addition),
+                    Num(1), Op(Unary.Negation)
                 ).right()
             ),
             PolishTestCase(
+                // 1 + 2
+                input = listOf(
+                    Number(1), Plus, Number(2)
+                ),
+                // 1 2 +
+                expected = listOf(
+                    Num(1), Num(2), Op(Binary.Add),
+                ).right()
+            ),
+            PolishTestCase(
+                // 1 + 2 * 3
                 input = listOf(
                     Number(1), Plus, Number(2), Asterisk, Number(3)
                 ),
+                // 1 2 3 * +
                 expected = listOf(
-                    Num(1), Num(2), Num(3), Op(Operator.Binary.Multiplication), Op(Operator.Binary.Addition),
+                    Num(1), Num(2), Num(3), Op(Binary.Multiply), Op(Binary.Add),
                 ).right()
             ),
             PolishTestCase(
-                input = listOf(OpeningParen, Number(1), Plus, Number(2), ClosingParen, Asterisk, Number(3)),
+                // 2 * (3 + 4) + 1
+                input = listOf(
+                    Number(2), Asterisk, OpeningParen, Number(3), Plus, Number(4), ClosingParen, Plus, Number(1)
+                ),
+                // 2 3 4 + * 1 +
                 expected = listOf(
-                    Num(1), Num(2), Op(Operator.Binary.Addition), Num(3), Op(Operator.Binary.Multiplication),
+                    Num(2), Num(3), Num(4), Op(Binary.Add), Op(Binary.Multiply), Num(1), Op(Binary.Add),
                 ).right()
             ),
         )
