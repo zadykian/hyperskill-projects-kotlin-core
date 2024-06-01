@@ -5,7 +5,7 @@ import arrow.core.raise.ensure
 import calculator.Command
 import calculator.Identifier
 
-object AssignmentParser : CommandParser<Command.AssignToIdentifier> {
+object AssignmentCommandParser : CommandParser<Command.AssignToIdentifier> {
     override fun canTry(tokens: List<Token>) = tokens.size >= 3 && tokens[1] == Token.Equals
 
     override fun parse(tokens: List<Token>) = either {
@@ -14,7 +14,7 @@ object AssignmentParser : CommandParser<Command.AssignToIdentifier> {
         }
 
         val identifier = Identifier.tryParse((tokens[0] as Token.Word).value).bind()
-        val expression = ExpressionParser.parse(tokens.drop(2)).bind().expression
+        val expression = ExpressionParser.parse(tokens.drop(2)).bind()
         Command.AssignToIdentifier(identifier, expression)
     }
 }

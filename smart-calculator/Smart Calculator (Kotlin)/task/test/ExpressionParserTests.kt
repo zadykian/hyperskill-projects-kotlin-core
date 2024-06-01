@@ -2,11 +2,16 @@ import arrow.core.left
 import arrow.core.right
 import assertk.assertThat
 import assertk.assertions.isEqualTo
+import calculator.Expression
+import calculator.ExpressionTerm
+import calculator.ExpressionTerm.Num
+import calculator.ExpressionTerm.Op
 import calculator.Operator.Binary
 import calculator.Operator.Unary
-import calculator.parser.*
-import calculator.parser.PostfixTerm.Num
-import calculator.parser.PostfixTerm.Op
+import calculator.parser.Errors
+import calculator.parser.ExpressionParser
+import calculator.parser.ParseError
+import calculator.parser.Token
 import calculator.parser.Token.*
 import calculator.parser.Token.Number
 import org.junit.jupiter.params.ParameterizedTest
@@ -17,15 +22,15 @@ sealed class PolishTestCase(val input: List<Token>) {
 }
 
 private class Failure(input: List<Token>, val expected: ParseError) : PolishTestCase(input)
-private class Success(input: List<Token>, val expected: List<PostfixTerm>) : PolishTestCase(input)
+private class Success(input: List<Token>, val expected: List<ExpressionTerm>) : PolishTestCase(input)
 
-class ReversePolishNotationConverterTests {
+class ExpressionParserTests {
     @ParameterizedTest
     @MethodSource("testCases")
     fun `Convert from infix to postfix notation`(testCase: PolishTestCase) {
-        val actual = ReversePolishNotationConverter.convertFromInfixToPostfix(testCase.input)
+        val actual = ExpressionParser.parse(testCase.input)
         when (testCase) {
-            is Success -> assertThat(actual).isEqualTo(testCase.expected.right())
+            is Success -> assertThat(actual).isEqualTo(Expression(testCase.expected).right())
             is Failure -> assertThat(actual).isEqualTo(testCase.expected.left())
         }
     }

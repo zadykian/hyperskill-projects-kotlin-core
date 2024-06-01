@@ -5,25 +5,20 @@ import arrow.core.left
 import arrow.core.raise.either
 import arrow.core.raise.ensure
 import arrow.core.right
-import calculator.Associativity
-import calculator.Identifier
-import calculator.Operator
-import calculator.Value
+import calculator.*
 
 private data class OpToken(val token: Token, val isBinary: Boolean)
 
-interface PostfixTerm {
-    @JvmInline
-    value class Num(val value: Value) : PostfixTerm
+object ExpressionCommandParser : CommandParser<Command.EvalExpression> {
+    override fun canTry(tokens: List<Token>) = tokens.isNotEmpty() && tokens[0] != Token.Slash
 
-    @JvmInline
-    value class Id(val value: Identifier) : PostfixTerm
-
-    @JvmInline
-    value class Op(val value: Operator) : PostfixTerm
+    override fun parse(tokens: List<Token>): Either<ParseError, Command.EvalExpression> = either {
+        val expression = ExpressionParser.parse(tokens).bind()
+        return Command.EvalExpression(expression).right()
+    }
 }
 
-object ReversePolishNotationConverter {
+object ExpressionParser {
     private val tokensToUnaryOps = mapOf(
         Token.Plus to Operator.Unary.Plus,
         Token.Minus to Operator.Unary.Negate,
@@ -37,29 +32,22 @@ object ReversePolishNotationConverter {
         Token.Attic to Operator.Binary.Power,
     )
 
-    private fun Token.isOperator() = this in tokensToUnaryOps || this in tokensToBinaryOps
-
-    private fun OpToken.getOperator(): Either<ParseError, Operator> {
-        val targetMap = if (isBinary) tokensToBinaryOps else tokensToUnaryOps
-        return targetMap[token]?.right() ?: Errors.unexpectedToken(token).left()
+    fun parse(tokens: List<Token>): Either<ParseError, Expression> = either {
+        val infixTokens = convertFromInfixToPostfix(tokens).bind()
+        return Expression(infixTokens).right()
     }
 
-    private fun OpToken.getPrecedence() = either {
-        val operator = getOperator().bind()
-        operator.precedence
-    }
-
-    fun convertFromInfixToPostfix(tokens: List<Token>): Either<ParseError, List<PostfixTerm>> = either {
+    private fun convertFromInfixToPostfix(tokens: List<Token>): Either<ParseError, List<ExpressionTerm>> = either {
         val operatorsStack = ArrayDeque<OpToken>()
-        val postfixTerms = mutableListOf<PostfixTerm>()
+        val expressionTerms = mutableListOf<ExpressionTerm>()
         fun unexpected(token: Token): Nothing = raise(Errors.unexpectedToken(token))
 
         for (index in 0..tokens.lastIndex) {
             when (val token = tokens[index]) {
-                is Token.Number -> postfixTerms.add(PostfixTerm.Num(token.value))
+                is Token.Number -> expressionTerms.add(ExpressionTerm.Num(token.value))
                 is Token.Word -> {
                     val identifier = Identifier.tryParse(token.value).bind()
-                    postfixTerms.add(PostfixTerm.Id(identifier))
+                    expressionTerms.add(ExpressionTerm.Id(identifier))
                 }
 
                 Token.OpeningParen -> operatorsStack.addLast(OpToken(token, false))
@@ -71,7 +59,7 @@ object ReversePolishNotationConverter {
                         }
 
                         val operator = opToken.getOperator().bind()
-                        postfixTerms.add(PostfixTerm.Op(operator))
+                        expressionTerms.add(ExpressionTerm.Op(operator))
                     }
                 }
 
@@ -101,8 +89,9 @@ object ReversePolishNotationConverter {
                         && hasToMoveTopOperator(operatorsStack.last(), currentOperator).bind()
                     ) {
                         val removedOperator = operatorsStack.removeLast().getOperator().bind()
-                        postfixTerms.add(PostfixTerm.Op(removedOperator))
+                        expressionTerms.add(ExpressionTerm.Op(removedOperator))
                     }
+
 
                     operatorsStack.addLast(opToken)
                 }
@@ -115,10 +104,22 @@ object ReversePolishNotationConverter {
             val opToken = operatorsStack.removeLast()
             ensure(opToken.token != Token.OpeningParen) { Errors.UNBALANCED_PARENS_IN_EXPRESSION }
             val operator = opToken.getOperator().bind()
-            postfixTerms.add(PostfixTerm.Op(operator))
+            expressionTerms.add(ExpressionTerm.Op(operator))
         }
 
-        return postfixTerms.right()
+        return expressionTerms.right()
+    }
+
+    private fun Token.isOperator() = this in tokensToUnaryOps || this in tokensToBinaryOps
+
+    private fun OpToken.getOperator(): Either<ParseError, Operator> {
+        val targetMap = if (isBinary) tokensToBinaryOps else tokensToUnaryOps
+        return targetMap[token]?.right() ?: Errors.unexpectedToken(token).left()
+    }
+
+    private fun OpToken.getPrecedence() = either {
+        val operator = getOperator().bind()
+        operator.precedence
     }
 
     private fun hasToMoveTopOperator(topOperator: OpToken, currentOperator: Operator): Either<ParseError, Boolean> =

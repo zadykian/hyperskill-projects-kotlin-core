@@ -14,8 +14,8 @@ interface CommandParser<out TCommand : Command> {
 object Parser {
     private val parsers = listOf(
         NamedCommandParser,
-        AssignmentParser,
-        ExpressionParser,
+        AssignmentCommandParser,
+        ExpressionCommandParser,
     )
 
     fun parse(tokens: List<Token>): Either<ParseError, Command> =

@@ -4,6 +4,8 @@ import arrow.core.raise.either
 import calculator.parser.Lexer
 import calculator.parser.Parser
 
+class IO(val read: () -> String, val write: (String) -> Unit)
+
 class Application(
     private val calculator: Calculator,
     private val io: IO

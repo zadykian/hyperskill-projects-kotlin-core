@@ -10,10 +10,10 @@ annotation class CommandDisplayText(val displayText: String)
 
 sealed interface Command {
     @CommandDisplayText("'x + 4 - 1' - evaluate an arithmetic expression")
-    class EvalExpression(val expression: Expression) : Command
+    data class EvalExpression(val expression: Expression) : Command
 
     @CommandDisplayText("'x = 2 + 4' - assign the result of the arithmetic expression (2 + 4) to the identifier (x)")
-    class AssignToIdentifier(val identifier: Identifier, val expression: Expression) : Command
+    data class AssignToIdentifier(val identifier: Identifier, val expression: Expression) : Command
 
     @CommandName("help")
     @CommandDisplayText("display help info")
