@@ -41,7 +41,7 @@ object ExpressionParser {
     private fun convertFromInfixToPostfix(tokens: List<Token>): Either<ParserError, List<ExpressionTerm>> = either {
         val operatorsStack = ArrayDeque<OpToken>()
         val expressionTerms = mutableListOf<ExpressionTerm>()
-        fun unexpected(token: Token): Nothing = raise(Errors.unexpectedToken(token))
+        fun unexpected(): Nothing = raise(Errors.unexpectedToken())
 
         for (index in 0..tokens.lastIndex) {
             when (val token = tokens[index]) {
@@ -54,7 +54,7 @@ object ExpressionParser {
                 Token.OpeningParen -> operatorsStack.addLast(OpToken(token, false))
                 Token.ClosingParen -> {
                     while (true) {
-                        val opToken = operatorsStack.removeLastOrNull() ?: unexpected(token)
+                        val opToken = operatorsStack.removeLastOrNull() ?: unexpected()
                         if (opToken.token is Token.OpeningParen) {
                             break
                         }
@@ -69,8 +69,8 @@ object ExpressionParser {
                 Token.Asterisk,
                 Token.Slash,
                 Token.Attic -> {
-                    val isUnary = token in tokensToUnaryOps
-                            && (index == 0 || tokens[index - 1].isOperator() || tokens[index - 1] == Token.OpeningParen)
+                    val isUnary = isUnaryAt(tokens, index)
+                    ensure(token in if (isUnary) tokensToUnaryOps else tokensToBinaryOps) { Errors.unexpectedToken() }
                     val opToken = OpToken(token, !isUnary)
 
                     if (operatorsStack.isEmpty()
@@ -79,9 +79,6 @@ object ExpressionParser {
                         operatorsStack.addLast(opToken)
                         continue
                     }
-
-                    val operatorMap = if (isUnary) tokensToUnaryOps else tokensToBinaryOps
-                    ensure(token in operatorMap) { Errors.unexpectedToken(token) }
 
                     val currentOperator = opToken.getOperator().bind()
 
@@ -93,11 +90,10 @@ object ExpressionParser {
                         expressionTerms.add(ExpressionTerm.Op(removedOperator))
                     }
 
-
                     operatorsStack.addLast(opToken)
                 }
 
-                Token.Equals -> unexpected(token)
+                Token.Equals -> unexpected()
             }
         }
 
@@ -111,11 +107,26 @@ object ExpressionParser {
         return expressionTerms.right()
     }
 
-    private fun Token.isOperator() = this in tokensToUnaryOps || this in tokensToBinaryOps
+    private fun isUnaryAt(tokens: List<Token>, index: Int): Boolean {
+        if (index !in 0..<tokens.lastIndex || tokens[index] !in tokensToUnaryOps) {
+            return false
+        }
+
+        fun Token.isOperator() = this in tokensToUnaryOps || this in tokensToBinaryOps
+
+        val previousTokenIsValid =
+            index == 0 || tokens[index - 1].isOperator() || tokens[index - 1] == Token.OpeningParen
+
+        val nextTokenIsValid = tokens[index + 1].let {
+            it is Token.Number || it is Token.Word || it is Token.OpeningParen
+        } || isUnaryAt(tokens, index + 1)
+
+        return previousTokenIsValid && nextTokenIsValid
+    }
 
     private fun OpToken.getOperator(): Either<ParserError, Operator> {
         val targetMap = if (isBinary) tokensToBinaryOps else tokensToUnaryOps
-        return targetMap[token]?.right() ?: Errors.unexpectedToken(token).left()
+        return targetMap[token]?.right() ?: Errors.unexpectedToken().left()
     }
 
     private fun OpToken.getPrecedence() = either {

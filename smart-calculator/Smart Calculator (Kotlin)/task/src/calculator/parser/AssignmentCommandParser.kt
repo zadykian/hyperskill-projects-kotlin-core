@@ -6,7 +6,8 @@ import calculator.Command
 import calculator.Identifier
 
 object AssignmentCommandParser : CommandParser<Command.AssignToIdentifier> {
-    override fun canTry(tokens: List<Token>) = tokens.size >= 3 && tokens[1] == Token.Equals
+    override fun canTry(tokens: List<Token>) =
+        tokens.isNotEmpty() && tokens.first() != Token.Slash && tokens.contains(Token.Equals)
 
     override fun parse(tokens: List<Token>) = either {
         ensure(tokens.size >= 3 && tokens[0] is Token.Word && tokens[1] is Token.Equals) {

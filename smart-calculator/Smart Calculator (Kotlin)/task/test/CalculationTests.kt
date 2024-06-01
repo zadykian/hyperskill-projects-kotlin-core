@@ -1,6 +1,7 @@
 import arrow.core.Either
 import arrow.core.left
 import arrow.core.raise.either
+import arrow.core.right
 import assertk.assertThat
 import assertk.assertions.isEqualTo
 import calculator.Calculator
@@ -29,7 +30,7 @@ class CalculationTests {
             Calculator().evaluate(command.expression).bind()
         }
 
-        assertThat(invocationResult).isEqualTo(testCase.expected.left())
+        assertThat(invocationResult).isEqualTo(testCase.expected.right())
     }
 
     @ParameterizedTest
@@ -138,8 +139,10 @@ class CalculationTests {
             ),
             // 1 + * 2
             CalcFailure(input = listOf(Number(1), Plus, Asterisk, Number(2)), expected = Errors.invalidExpression()),
-            // 1 2 * *
+            // 1 2 + +
             CalcFailure(input = listOf(Number(1), Number(2), Plus, Plus), expected = Errors.invalidExpression()),
+            // 1 2 * -
+            CalcFailure(input = listOf(Number(1), Number(2), Asterisk, Minus), expected = Errors.invalidExpression()),
             // 1 + ( 2 ) )
             CalcFailure(
                 input = listOf(Number(1), Plus, OpeningParen, Number(2)),
@@ -154,7 +157,7 @@ class CalculationTests {
         }
 
         private fun invalidSingleToken(): Sequence<CalcFailure> {
-            val operators = sequenceOf(Plus, Minus, Asterisk, Slash, Attic, Equals, OpeningParen, ClosingParen)
+            val operators = sequenceOf(Plus, Minus, Asterisk, Slash, Attic, OpeningParen, ClosingParen)
             return operators.map { CalcFailure(listOf(it), Errors.invalidExpression()) }
         }
 

@@ -4,9 +4,9 @@ sealed interface Error {
     val displayText: String
 }
 
-class LexerError(override val displayText: String) : Error
-class ParserError(override val displayText: String) : Error
-class CalculatorError(override val displayText: String) : Error
+data class LexerError(override val displayText: String) : Error
+data class ParserError(override val displayText: String) : Error
+data class CalculatorError(override val displayText: String) : Error
 
 object Errors {
     fun unknownIdentifier() = CalculatorError("Unknown identifier")
@@ -23,5 +23,5 @@ object Errors {
 
     fun unexpectedChar(char: Char) = LexerError("Unexpected character '$char'")
 
-    fun unexpectedToken(token: Token?) = ParserError("Unexpected token '$token'")
+    fun unexpectedToken() = ParserError("Invalid expression")
 }
