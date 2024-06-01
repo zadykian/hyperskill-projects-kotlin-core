@@ -1,15 +1,14 @@
+import arrow.core.Either
 import arrow.core.left
 import arrow.core.raise.either
 import assertk.assertThat
 import assertk.assertions.isEqualTo
 import calculator.Calculator
 import calculator.Value
-import calculator.parser.Error
-import calculator.parser.Errors
-import calculator.parser.ExpressionCommandParser
-import calculator.parser.Token
+import calculator.parser.*
 import calculator.parser.Token.*
 import calculator.parser.Token.Number
+import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
 
@@ -42,6 +41,35 @@ class CalculationTests {
         }
 
         assertThat(invocationResult).isEqualTo(testCase.expected.left())
+    }
+
+    @Test
+    fun evaluateExpressionWithVariables() {
+        val assignmentTokens = sequenceOf(
+            listOf(Word("a"), Equals, Number(4)),
+            listOf(Word("b"), Equals, Number(5)),
+            listOf(Word("c"), Equals, Number(6)),
+        )
+
+        // a * 2 + b * 3 + c * (2 + 3)
+        val expressionTokens = listOf(
+            Word("a"), Asterisk, Number(2), Plus,
+            Word("b"), Asterisk, Number(3), Plus,
+            Word("c"), Asterisk, OpeningParen, Number(2), Plus, Number(3), ClosingParen,
+        )
+
+        val calculator = Calculator()
+
+        val result = either {
+            assignmentTokens
+                .map { AssignmentCommandParser.parse(it).bind() }
+                .forEach { calculator.assign(it.identifier, it.expression) }
+
+            val expression = ExpressionParser.parse(expressionTokens).bind()
+            calculator.evaluate(expression).bind()
+        }
+
+        assertThat(result).isEqualTo(Either.Right(53))
     }
 
     companion object {
