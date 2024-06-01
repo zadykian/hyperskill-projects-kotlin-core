@@ -138,6 +138,8 @@ class CalculationTests {
             ),
             // 1 + * 2
             CalcFailure(input = listOf(Number(1), Plus, Asterisk, Number(2)), expected = Errors.invalidExpression()),
+            // 1 2 * *
+            CalcFailure(input = listOf(Number(1), Number(2), Plus, Plus), expected = Errors.invalidExpression()),
             // 1 + ( 2 ) )
             CalcFailure(
                 input = listOf(Number(1), Plus, OpeningParen, Number(2)),

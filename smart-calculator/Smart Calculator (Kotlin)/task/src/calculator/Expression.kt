@@ -11,21 +11,21 @@ sealed interface Operator {
     val precedence: Byte
     val associativity: Associativity
 
-    enum class Unary(override val precedence: Byte, override val associativity: Associativity) : Operator {
-        Plus(2, Associativity.Right),
-        Negate(2, Associativity.Right),
+    sealed class Unary(override val precedence: Byte, override val associativity: Associativity) : Operator {
+        data object Plus : Unary(2, Associativity.Right)
+        data object Negate : Unary(2, Associativity.Right)
     }
 
-    enum class Binary(override val precedence: Byte, override val associativity: Associativity) : Operator {
-        Add(0, Associativity.Left),
-        Subtract(0, Associativity.Left),
-        Multiply(1, Associativity.Left),
-        Divide(1, Associativity.Left),
-        Power(2, Associativity.Right),
+    sealed class Binary(override val precedence: Byte, override val associativity: Associativity) : Operator {
+        data object Add : Binary(0, Associativity.Left)
+        data object Subtract : Binary(0, Associativity.Left)
+        data object Multiply : Binary(1, Associativity.Left)
+        data object Divide : Binary(1, Associativity.Left)
+        data object Power : Binary(2, Associativity.Right)
     }
 }
 
-interface ExpressionTerm {
+sealed interface ExpressionTerm {
     @JvmInline
     value class Num(val value: Value) : ExpressionTerm
 
