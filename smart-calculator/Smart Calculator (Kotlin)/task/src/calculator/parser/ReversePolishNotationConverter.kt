@@ -114,7 +114,7 @@ object ReversePolishNotationConverter {
 
         repeat(operatorsStack.size) {
             val opToken = operatorsStack.removeLast()
-            ensure(opToken.token != Token.OpeningParen) { Errors.UNBALANCED_EXPRESSION }
+            ensure(opToken.token != Token.OpeningParen) { Errors.UNBALANCED_PARENS_IN_EXPRESSION }
             val operator = opToken.getOperator().bind()
             postfixTerms.add(PostfixTerm.Op(operator))
         }
