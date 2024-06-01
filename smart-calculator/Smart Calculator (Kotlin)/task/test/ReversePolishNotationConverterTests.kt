@@ -35,7 +35,9 @@ class ReversePolishNotationConverterTests {
         fun testCases(): List<PolishTestCase> = buildList {
             addAll(positiveTestCases())
             addAll(negativeTestCases())
-            addAll(invalidSequentialOpsTestCases())
+            addAll(invalidSequentialOperators())
+            addAll(invalidSingleToken())
+            addAll(binaryOpsWithoutSecondOperand())
         }
 
         private fun positiveTestCases(): Sequence<Success> = sequenceOf(
@@ -118,6 +120,12 @@ class ReversePolishNotationConverterTests {
                 expected = listOf(Num(1), Num(2), Op(Binary.Power), Num(3), Op(Binary.Multiply))
             ),
             Success(
+                // 1 ^ 2 ^ 3
+                input = listOf(Number(1), Attic, Number(2), Attic, Number(3)),
+                // 1 2 3 ^ ^
+                expected = listOf(Num(1), Num(2), Num(3), Op(Binary.Power), Op(Binary.Power))
+            ),
+            Success(
                 // 2 * (3 + 4) + 1
                 input = listOf(
                     Number(2), Asterisk, OpeningParen, Number(3), Plus, Number(4), ClosingParen, Plus, Number(1)
@@ -130,42 +138,42 @@ class ReversePolishNotationConverterTests {
         )
 
         private fun negativeTestCases(): Sequence<Failure> = sequenceOf(
+            // 1 2
+            Failure(input = listOf(Number(1), Number(2)), expected = Errors.INVALID_EXPRESSION),
+            // 1 + * 2
+            Failure(input = listOf(Number(1), Plus, Asterisk, Number(2)), expected = Errors.INVALID_EXPRESSION),
+            // * 1
+            Failure(input = listOf(Asterisk, Number(1)), expected = Errors.INVALID_EXPRESSION),
+            // 1 *
+            Failure(input = listOf(Number(1), Asterisk), expected = Errors.INVALID_EXPRESSION),
+            // 1 ( 2 )
             Failure(
-                // 1 2
-                input = listOf(Number(1), Number(2)),
-                expected = Errors.INVALID_EXPRESSION
-            ),
-            Failure(
-                // 1 + * 2
-                input = listOf(Number(1), Plus, Asterisk, Number(2)),
-                expected = Errors.INVALID_EXPRESSION
-            ),
-            Failure(
-                // 1 ( 2 )
                 input = listOf(Number(1), OpeningParen, Number(2), ClosingParen),
                 expected = Errors.INVALID_EXPRESSION
             ),
+            // 1 + ( 2 ) )
             Failure(
-                // (
-                input = listOf(OpeningParen),
-                expected = Errors.UNBALANCED_PARENS_IN_EXPRESSION
-            ),
-            Failure(
-                // )
-                input = listOf(ClosingParen),
-                expected = Errors.UNBALANCED_PARENS_IN_EXPRESSION
-            ),
-            Failure(
-                // 1 + ( 2 ) )
                 input = listOf(Number(1), Plus, OpeningParen, Number(2)),
                 expected = Errors.UNBALANCED_PARENS_IN_EXPRESSION
             ),
         )
 
-        private fun invalidSequentialOpsTestCases(): Sequence<PolishTestCase> {
+        private fun invalidSequentialOperators(): Sequence<PolishTestCase> {
             val operators = sequenceOf(Asterisk, Slash, Attic)
             val pairs = operators.flatMap { left -> operators.map { right -> arrayOf(left, right) } }
             return pairs.map { Failure(listOf(Number(1), *it, Number(2)), Errors.INVALID_EXPRESSION) }
         }
+
+        private fun invalidSingleToken(): Sequence<PolishTestCase> {
+            val operators = sequenceOf(Plus, Minus, Asterisk, Slash, Attic, Equals, OpeningParen, ClosingParen)
+            return operators.map { Failure(listOf(it), Errors.INVALID_EXPRESSION) }
+        }
+
+        private fun binaryOpsWithoutSecondOperand() =
+            sequenceOf(Asterisk, Slash, Attic)
+                .flatMap { sequenceOf(listOf(it, Number(1)), listOf(Number(1), it)) }
+                .plus(element = listOf(Number(1), Plus))
+                .plus(element = listOf(Number(1), Minus))
+                .map { Failure(it, Errors.INVALID_EXPRESSION) }
     }
 }
