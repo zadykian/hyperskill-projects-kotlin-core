@@ -33,6 +33,7 @@ object ExpressionParser {
     )
 
     fun parse(tokens: List<Token>): Either<ParserError, Expression> = either {
+        ensure(tokens.isNotEmpty()) { Errors.emptyInput() }
         val infixTokens = convertFromInfixToPostfix(tokens).bind()
         return Expression(infixTokens).right()
     }
