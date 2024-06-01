@@ -16,8 +16,8 @@ sealed class PolishTestCase(val input: List<Token>) {
     override fun toString(): String = input.joinToString(separator = " ")
 }
 
-class Failure(input: List<Token>, val expected: ParseError) : PolishTestCase(input)
-class Success(input: List<Token>, val expected: List<PostfixTerm>) : PolishTestCase(input)
+private class Failure(input: List<Token>, val expected: ParseError) : PolishTestCase(input)
+private class Success(input: List<Token>, val expected: List<PostfixTerm>) : PolishTestCase(input)
 
 class ReversePolishNotationConverterTests {
     @ParameterizedTest

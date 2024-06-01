@@ -5,6 +5,7 @@ import arrow.core.left
 import arrow.core.raise.either
 import arrow.core.raise.ensure
 import arrow.core.right
+import calculator.Associativity
 import calculator.Identifier
 import calculator.Operator
 import calculator.Value
@@ -75,9 +76,9 @@ object ReversePolishNotationConverter {
                 }
 
                 Token.Plus,
-                Token.Slash,
                 Token.Minus,
                 Token.Asterisk,
+                Token.Slash,
                 Token.Attic -> {
                     val isUnary = token in tokensToUnaryOps
                             && (index == 0 || tokens[index - 1].isOperator() || tokens[index - 1] == Token.OpeningParen)
@@ -93,13 +94,11 @@ object ReversePolishNotationConverter {
                     val operatorMap = if (isUnary) tokensToUnaryOps else tokensToBinaryOps
                     ensure(token in operatorMap) { Errors.unexpectedToken(token) }
 
-                    val currentPrecedence = opToken.getPrecedence().bind()
+                    val currentOperator = opToken.getOperator().bind()
 
                     while (
                         operatorsStack.isNotEmpty()
-                        && operatorsStack.last().let {
-                            it.token != Token.OpeningParen && it.getPrecedence().bind() >= currentPrecedence
-                        }
+                        && hasToMoveTopOperator(operatorsStack.last(), currentOperator).bind()
                     ) {
                         val removedOperator = operatorsStack.removeLast().getOperator().bind()
                         postfixTerms.add(PostfixTerm.Op(removedOperator))
@@ -121,4 +120,18 @@ object ReversePolishNotationConverter {
 
         return postfixTerms.right()
     }
+
+    private fun hasToMoveTopOperator(topOperator: OpToken, currentOperator: Operator): Either<ParseError, Boolean> =
+        either {
+            if (topOperator.token == Token.OpeningParen) {
+                return false.right()
+            }
+
+            val topPrecedence = topOperator.getPrecedence().bind()
+
+            val hasGreaterOrEqualPriority = topPrecedence > currentOperator.precedence
+                    || topPrecedence == currentOperator.precedence && currentOperator.associativity == Associativity.Left
+
+            return hasGreaterOrEqualPriority.right()
+        }
 }
