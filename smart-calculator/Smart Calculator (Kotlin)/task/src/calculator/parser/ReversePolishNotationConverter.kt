@@ -25,7 +25,7 @@ interface PostfixTerm {
 object ReversePolishNotationConverter {
     private val tokensToUnaryOps = mapOf(
         Token.Plus to Operator.Unary.Plus,
-        Token.Minus to Operator.Unary.Negation,
+        Token.Minus to Operator.Unary.Negate,
     )
 
     private val tokensToBinaryOps = mapOf(

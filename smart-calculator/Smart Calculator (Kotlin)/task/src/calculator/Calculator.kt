@@ -24,7 +24,7 @@ class Calculator {
 
             is Expression.Unary -> when (expression.operator) {
                 Operator.Unary.Plus -> evaluate(expression.operand)
-                Operator.Unary.Negation -> evaluate(expression.operand).map { it.unaryMinus() }
+                Operator.Unary.Negate -> evaluate(expression.operand).map { it.unaryMinus() }
             }
 
             is Expression.Binary -> either {

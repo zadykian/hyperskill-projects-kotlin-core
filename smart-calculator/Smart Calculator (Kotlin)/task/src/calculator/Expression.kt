@@ -10,7 +10,7 @@ sealed interface Operator {
 
     enum class Unary(override val precedence: Byte) : Operator {
         Plus(2),
-        Negation(2),
+        Negate(2),
     }
 
     enum class Binary(override val precedence: Byte) : Operator {
