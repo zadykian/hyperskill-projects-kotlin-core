@@ -2,7 +2,8 @@ package calculator.parser
 
 import arrow.core.raise.either
 import arrow.core.raise.ensure
-import calculator.*
+import calculator.Command
+import calculator.commandNameOrNull
 
 object NamedCommandParser : CommandParser<Command> {
     private val namedCommands =
@@ -18,10 +19,10 @@ object NamedCommandParser : CommandParser<Command> {
 
     override fun parse(tokens: List<Token>) = either {
         ensure(tokens.size == 2 && tokens[0] is Token.Slash && tokens[1] is Token.Word) {
-            Errors.INVALID_COMMAND_INVOCATION
+            Errors.invalidCommandInvocation()
         }
 
         val commandName = (tokens[0] as Token.Word).value.lowercase()
-        namedCommands[commandName] ?: raise(Errors.UNKNOWN_COMMAND)
+        namedCommands[commandName] ?: raise(Errors.unknownCommand())
     }
 }

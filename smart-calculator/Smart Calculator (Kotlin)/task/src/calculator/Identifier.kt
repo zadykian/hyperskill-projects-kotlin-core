@@ -4,6 +4,7 @@ import arrow.core.Either
 import arrow.core.left
 import arrow.core.right
 import calculator.parser.Errors
+import calculator.parser.ParserError
 
 class Identifier private constructor(private val value: String) {
     override fun toString() = value
@@ -19,8 +20,8 @@ class Identifier private constructor(private val value: String) {
     companion object {
         private val regex = Regex("^[a-zA-Z]+$")
 
-        fun tryParse(string: String): Either<String, Identifier> =
+        fun tryParse(string: String): Either<ParserError, Identifier> =
             if (regex.matches(string)) Identifier(string).right()
-            else Errors.INVALID_IDENTIFIER.left()
+            else Errors.invalidIdentifier().left()
     }
 }

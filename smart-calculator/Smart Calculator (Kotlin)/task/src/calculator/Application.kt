@@ -11,7 +11,7 @@ class Application(
     private val io: IO
 ) {
     tailrec fun run() {
-        val executionResult = either<String, Unit> {
+        either {
             val input = io.read()
             val tokens = Lexer.tokenize(input).bind()
             val command = Parser.parse(tokens).bind()
@@ -19,7 +19,6 @@ class Application(
             if (command is Command.ExitProgram) return@run
         }
 
-        executionResult.onLeft { io.write(it) }
         run()
     }
 
@@ -28,11 +27,11 @@ class Application(
             is Command.EvalExpression -> calculator
                 .evaluate(command.expression)
                 .onRight { io.write(it.toString()) }
-                .onLeft { io.write(it) }
+                .onLeft { io.write(it.displayText) }
 
             is Command.AssignToIdentifier -> calculator
                 .assign(command.identifier, command.expression)
-                .onLeft { io.write(it) }
+                .onLeft { io.write(it.displayText) }
 
             is Command.DisplayHelp -> io.write(DisplayText.help())
             is Command.ExitProgram -> io.write(DisplayText.exit())

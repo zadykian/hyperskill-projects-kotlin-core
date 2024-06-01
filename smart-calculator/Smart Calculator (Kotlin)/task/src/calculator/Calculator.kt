@@ -2,8 +2,7 @@ package calculator
 
 import arrow.core.Either
 import arrow.core.raise.either
-
-typealias CalculationError = String
+import calculator.parser.CalculatorError
 
 class Calculator {
     private val declaredVariables = mutableMapOf<Identifier, Value>()
@@ -11,7 +10,7 @@ class Calculator {
     fun assign(identifier: Identifier, expression: Expression) =
         evaluate(expression).onRight { declaredVariables[identifier] = it }
 
-    fun evaluate(expression: Expression): Either<CalculationError, Value> = either {
+    fun evaluate(expression: Expression): Either<CalculatorError, Value> = either {
         TODO()
     }
 }

@@ -1,17 +1,26 @@
 package calculator.parser
 
+sealed interface Error {
+    val displayText: String
+}
+
+class LexerError(override val displayText: String) : Error
+class ParserError(override val displayText: String) : Error
+class CalculatorError(override val displayText: String) : Error
+
 object Errors {
-    const val UNKNOWN_COMMAND = "Unknown command"
-    const val UNKNOWN_IDENTIFIER = "Unknown identifier"
+    fun unknownIdentifier() = CalculatorError("Unknown identifier")
 
-    const val INVALID_INPUT = "Invalid input"
-    const val INVALID_IDENTIFIER = "Invalid identifier"
-    const val INVALID_COMMAND_INVOCATION = "Invalid command invocation"
-    const val INVALID_ASSIGNMENT = "Invalid assignment"
-    const val INVALID_EXPRESSION = "Invalid expression"
-    const val UNBALANCED_PARENS_IN_EXPRESSION = "Unbalanced parens in the expression"
+    fun invalidInput() = ParserError("Invalid input")
+    fun unknownCommand() = ParserError("Unknown command")
+    fun invalidCommandInvocation() = ParserError("Invalid command invocation")
 
-    fun unexpectedChar(char: Char) = "Unexpected character '$char'"
+    fun invalidIdentifier() = ParserError("Invalid identifier")
+    fun invalidAssignment() = ParserError("Invalid assignment")
+    fun invalidExpression() = ParserError("Invalid expression")
+    fun unbalancedParens() = ParserError("Unbalanced parens in the expression")
 
-    fun unexpectedToken(token: Token?) = "Unexpected token '$token'"
+    fun unexpectedChar(char: Char) = LexerError("Unexpected character '$char'")
+
+    fun unexpectedToken(token: Token?) = ParserError("Unexpected token '$token'")
 }

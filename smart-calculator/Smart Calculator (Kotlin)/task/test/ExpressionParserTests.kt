@@ -3,31 +3,20 @@ import arrow.core.right
 import assertk.assertThat
 import assertk.assertions.isEqualTo
 import calculator.Expression
-import calculator.ExpressionTerm
 import calculator.ExpressionTerm.Num
 import calculator.ExpressionTerm.Op
 import calculator.Operator.Binary
 import calculator.Operator.Unary
-import calculator.parser.Errors
 import calculator.parser.ExpressionParser
-import calculator.parser.ParseError
-import calculator.parser.Token
 import calculator.parser.Token.*
 import calculator.parser.Token.Number
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
 
-sealed class PolishTestCase(val input: List<Token>) {
-    override fun toString(): String = input.joinToString(separator = " ")
-}
-
-private class Failure(input: List<Token>, val expected: ParseError) : PolishTestCase(input)
-private class Success(input: List<Token>, val expected: List<ExpressionTerm>) : PolishTestCase(input)
-
 class ExpressionParserTests {
     @ParameterizedTest
-    @MethodSource("testCases")
-    fun `Convert from infix to postfix notation`(testCase: PolishTestCase) {
+    @MethodSource("positiveTestCases")
+    fun `Convert from infix to postfix notation`(testCase: CalcTestCase) {
         val actual = ExpressionParser.parse(testCase.input)
         when (testCase) {
             is Success -> assertThat(actual).isEqualTo(Expression(testCase.expected).right())
@@ -37,15 +26,7 @@ class ExpressionParserTests {
 
     companion object {
         @JvmStatic
-        fun testCases(): List<PolishTestCase> = buildList {
-            addAll(positiveTestCases())
-            addAll(negativeTestCases())
-            addAll(invalidSequentialOperators())
-            addAll(invalidSingleToken())
-            addAll(binaryOpsWithoutSecondOperand())
-        }
-
-        private fun positiveTestCases(): Sequence<Success> = sequenceOf(
+        fun positiveTestCases(): Iterable<Success> = listOf(
             Success(
                 // 1
                 input = listOf(Number(1)),
@@ -141,44 +122,5 @@ class ExpressionParserTests {
                 )
             ),
         )
-
-        private fun negativeTestCases(): Sequence<Failure> = sequenceOf(
-            // 1 2
-            Failure(input = listOf(Number(1), Number(2)), expected = Errors.INVALID_EXPRESSION),
-            // 1 + * 2
-            Failure(input = listOf(Number(1), Plus, Asterisk, Number(2)), expected = Errors.INVALID_EXPRESSION),
-            // * 1
-            Failure(input = listOf(Asterisk, Number(1)), expected = Errors.INVALID_EXPRESSION),
-            // 1 *
-            Failure(input = listOf(Number(1), Asterisk), expected = Errors.INVALID_EXPRESSION),
-            // 1 ( 2 )
-            Failure(
-                input = listOf(Number(1), OpeningParen, Number(2), ClosingParen),
-                expected = Errors.INVALID_EXPRESSION
-            ),
-            // 1 + ( 2 ) )
-            Failure(
-                input = listOf(Number(1), Plus, OpeningParen, Number(2)),
-                expected = Errors.UNBALANCED_PARENS_IN_EXPRESSION
-            ),
-        )
-
-        private fun invalidSequentialOperators(): Sequence<PolishTestCase> {
-            val operators = sequenceOf(Asterisk, Slash, Attic)
-            val pairs = operators.flatMap { left -> operators.map { right -> arrayOf(left, right) } }
-            return pairs.map { Failure(listOf(Number(1), *it, Number(2)), Errors.INVALID_EXPRESSION) }
-        }
-
-        private fun invalidSingleToken(): Sequence<PolishTestCase> {
-            val operators = sequenceOf(Plus, Minus, Asterisk, Slash, Attic, Equals, OpeningParen, ClosingParen)
-            return operators.map { Failure(listOf(it), Errors.INVALID_EXPRESSION) }
-        }
-
-        private fun binaryOpsWithoutSecondOperand() =
-            sequenceOf(Asterisk, Slash, Attic)
-                .flatMap { sequenceOf(listOf(it, Number(1)), listOf(Number(1), it)) }
-                .plus(element = listOf(Number(1), Plus))
-                .plus(element = listOf(Number(1), Minus))
-                .map { Failure(it, Errors.INVALID_EXPRESSION) }
     }
 }

@@ -12,7 +12,7 @@ private data class OpToken(val token: Token, val isBinary: Boolean)
 object ExpressionCommandParser : CommandParser<Command.EvalExpression> {
     override fun canTry(tokens: List<Token>) = tokens.isNotEmpty() && tokens[0] != Token.Slash
 
-    override fun parse(tokens: List<Token>): Either<ParseError, Command.EvalExpression> = either {
+    override fun parse(tokens: List<Token>): Either<ParserError, Command.EvalExpression> = either {
         val expression = ExpressionParser.parse(tokens).bind()
         return Command.EvalExpression(expression).right()
     }
@@ -32,12 +32,12 @@ object ExpressionParser {
         Token.Attic to Operator.Binary.Power,
     )
 
-    fun parse(tokens: List<Token>): Either<ParseError, Expression> = either {
+    fun parse(tokens: List<Token>): Either<ParserError, Expression> = either {
         val infixTokens = convertFromInfixToPostfix(tokens).bind()
         return Expression(infixTokens).right()
     }
 
-    private fun convertFromInfixToPostfix(tokens: List<Token>): Either<ParseError, List<ExpressionTerm>> = either {
+    private fun convertFromInfixToPostfix(tokens: List<Token>): Either<ParserError, List<ExpressionTerm>> = either {
         val operatorsStack = ArrayDeque<OpToken>()
         val expressionTerms = mutableListOf<ExpressionTerm>()
         fun unexpected(token: Token): Nothing = raise(Errors.unexpectedToken(token))
@@ -102,7 +102,7 @@ object ExpressionParser {
 
         repeat(operatorsStack.size) {
             val opToken = operatorsStack.removeLast()
-            ensure(opToken.token != Token.OpeningParen) { Errors.UNBALANCED_PARENS_IN_EXPRESSION }
+            ensure(opToken.token != Token.OpeningParen) { Errors.unbalancedParens() }
             val operator = opToken.getOperator().bind()
             expressionTerms.add(ExpressionTerm.Op(operator))
         }
@@ -112,7 +112,7 @@ object ExpressionParser {
 
     private fun Token.isOperator() = this in tokensToUnaryOps || this in tokensToBinaryOps
 
-    private fun OpToken.getOperator(): Either<ParseError, Operator> {
+    private fun OpToken.getOperator(): Either<ParserError, Operator> {
         val targetMap = if (isBinary) tokensToBinaryOps else tokensToUnaryOps
         return targetMap[token]?.right() ?: Errors.unexpectedToken(token).left()
     }
@@ -122,7 +122,7 @@ object ExpressionParser {
         operator.precedence
     }
 
-    private fun hasToMoveTopOperator(topOperator: OpToken, currentOperator: Operator): Either<ParseError, Boolean> =
+    private fun hasToMoveTopOperator(topOperator: OpToken, currentOperator: Operator): Either<ParserError, Boolean> =
         either {
             if (topOperator.token == Token.OpeningParen) {
                 return false.right()

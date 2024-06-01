@@ -4,8 +4,6 @@ import arrow.core.Either
 import arrow.core.left
 import arrow.core.right
 
-typealias LexerError = String
-
 sealed interface Token {
     class Number(val value: Int) : Token {
         override fun toString() = value.toString()

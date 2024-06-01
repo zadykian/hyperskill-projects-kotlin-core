@@ -10,7 +10,7 @@ object AssignmentCommandParser : CommandParser<Command.AssignToIdentifier> {
 
     override fun parse(tokens: List<Token>) = either {
         ensure(tokens.size >= 3 && tokens[0] is Token.Word && tokens[1] is Token.Equals) {
-            Errors.INVALID_ASSIGNMENT
+            Errors.invalidAssignment()
         }
 
         val identifier = Identifier.tryParse((tokens[0] as Token.Word).value).bind()
