@@ -41,7 +41,6 @@ object ExpressionParser {
     private fun convertFromInfixToPostfix(tokens: List<Token>): List<ExpressionTerm> {
         val operatorsStack = ArrayDeque<OpToken>()
         val expressionTerms = mutableListOf<ExpressionTerm>()
-        fun unexpected(): Nothing = raise(Errors.unexpectedToken())
 
         for (index in 0..tokens.lastIndex) {
             when (val token = tokens[index]) {
@@ -52,17 +51,7 @@ object ExpressionParser {
                 }
 
                 Token.OpeningParen -> operatorsStack.addLast(OpToken(token, false))
-                Token.ClosingParen -> {
-                    while (true) {
-                        val opToken = operatorsStack.removeLastOrNull() ?: unexpected()
-                        if (opToken.token is Token.OpeningParen) {
-                            break
-                        }
-
-                        val operator = opToken.getOperator()
-                        expressionTerms.add(ExpressionTerm.Op(operator))
-                    }
-                }
+                Token.ClosingParen -> popOperatorsFromStack(operatorsStack, expressionTerms)
 
                 Token.Plus,
                 Token.Minus,
@@ -72,28 +61,10 @@ object ExpressionParser {
                     val isUnary = isUnaryAt(tokens, index)
                     ensure(token in if (isUnary) tokensToUnaryOps else tokensToBinaryOps) { Errors.unexpectedToken() }
                     val opToken = OpToken(token, !isUnary)
-
-                    if (operatorsStack.isEmpty()
-                        || operatorsStack.last().token == Token.OpeningParen
-                    ) {
-                        operatorsStack.addLast(opToken)
-                        continue
-                    }
-
-                    val currentOperator = opToken.getOperator()
-
-                    while (
-                        operatorsStack.isNotEmpty()
-                        && hasToMoveTopOperator(operatorsStack.last(), currentOperator)
-                    ) {
-                        val removedOperator = operatorsStack.removeLast().getOperator()
-                        expressionTerms.add(ExpressionTerm.Op(removedOperator))
-                    }
-
-                    operatorsStack.addLast(opToken)
+                    handleOperatorToken(opToken, operatorsStack, expressionTerms)
                 }
 
-                Token.Equals -> unexpected()
+                Token.Equals -> raise(Errors.unexpectedToken())
             }
         }
 
@@ -106,6 +77,17 @@ object ExpressionParser {
 
         return expressionTerms
     }
+
+    context(Raise<ParserError>)
+    private fun popOperatorsFromStack(
+        operatorsStack: ArrayDeque<OpToken>,
+        expressionTerms: MutableList<ExpressionTerm>
+    ) = generateSequence { operatorsStack.removeLastOrNull() ?: raise(Errors.unexpectedToken()) }
+        .takeWhile { it.token != Token.OpeningParen }
+        .forEach {
+            val operator = it.getOperator()
+            expressionTerms.add(ExpressionTerm.Op(operator))
+        }
 
     private fun isUnaryAt(tokens: List<Token>, index: Int): Boolean {
         if (index !in 0..<tokens.lastIndex || tokens[index] !in tokensToUnaryOps) {
@@ -122,6 +104,32 @@ object ExpressionParser {
         } || isUnaryAt(tokens, index + 1)
 
         return previousTokenIsValid && nextTokenIsValid
+    }
+
+    context(Raise<ParserError>)
+    private fun handleOperatorToken(
+        opToken: OpToken,
+        operatorsStack: ArrayDeque<OpToken>,
+        expressionTerms: MutableList<ExpressionTerm>
+    ) {
+        if (operatorsStack.isEmpty()
+            || operatorsStack.last().token == Token.OpeningParen
+        ) {
+            operatorsStack.addLast(opToken)
+            return
+        }
+
+        val currentOperator = opToken.getOperator()
+
+        while (
+            operatorsStack.isNotEmpty()
+            && hasToMoveTopOperator(operatorsStack.last(), currentOperator)
+        ) {
+            val removedOperator = operatorsStack.removeLast().getOperator()
+            expressionTerms.add(ExpressionTerm.Op(removedOperator))
+        }
+
+        operatorsStack.addLast(opToken)
     }
 
     context(Raise<ParserError>)
