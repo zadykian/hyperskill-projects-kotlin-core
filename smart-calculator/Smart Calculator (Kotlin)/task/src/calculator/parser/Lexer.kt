@@ -1,8 +1,6 @@
 package calculator.parser
 
-import arrow.core.Either
-import arrow.core.left
-import arrow.core.right
+import arrow.core.raise.Raise
 
 sealed interface Token {
     class Number(val value: Int) : Token {
@@ -35,7 +33,8 @@ object Lexer {
         ')' to Token.ClosingParen,
     )
 
-    fun tokenize(input: CharSequence): Either<LexerError, List<Token>> {
+    context(Raise<LexerError>)
+    fun tokenize(input: CharSequence): List<Token> {
         val tokens = mutableListOf<Token>()
 
         var index = 0
@@ -55,14 +54,14 @@ object Lexer {
 
                 opTokens.containsKey(char) -> Pair(opTokens.getValue(char), 1)
                 char.isWhitespace() -> Pair(null, 1)
-                else -> return Errors.unexpectedChar(char).left()
+                else -> raise(Errors.unexpectedChar(char))
             }
 
             index += charsConsumed
             nextToken?.let { tokens.add(it) }
         }
 
-        return tokens.right()
+        return tokens
     }
 
     private fun CharSequence.takeFromWhile(startIndex: Int, predicate: (Char) -> Boolean) =

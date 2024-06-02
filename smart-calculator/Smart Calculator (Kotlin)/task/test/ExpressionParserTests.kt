@@ -1,4 +1,5 @@
 import arrow.core.left
+import arrow.core.raise.either
 import arrow.core.right
 import assertk.assertThat
 import assertk.assertions.isEqualTo
@@ -28,7 +29,7 @@ class ExpressionParserTests {
     @ParameterizedTest
     @MethodSource("positiveTestCases")
     fun `Convert from infix to postfix notation`(testCase: ParserTestCase) {
-        val actual = ExpressionParser.parse(testCase.input)
+        val actual = either { ExpressionParser.parse(testCase.input) }
         when (testCase) {
             is ParserSuccess -> assertThat(actual).isEqualTo(Expression(testCase.expected).right())
             is ParserFailure -> assertThat(actual).isEqualTo(testCase.expected.left())

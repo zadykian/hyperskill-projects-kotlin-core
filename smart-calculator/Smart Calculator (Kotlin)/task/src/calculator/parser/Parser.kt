@@ -1,12 +1,11 @@
 package calculator.parser
 
-import arrow.core.Either
-import arrow.core.left
+import arrow.core.raise.Raise
 import calculator.Command
 
 interface CommandParser<out TCommand : Command> {
     fun canTry(tokens: List<Token>): Boolean
-    fun parse(tokens: List<Token>): Either<ParserError, TCommand>
+    context(Raise<ParserError>) fun parse(tokens: List<Token>): TCommand
 }
 
 object Parser {
@@ -16,9 +15,10 @@ object Parser {
         ExpressionCommandParser,
     )
 
-    fun parse(tokens: List<Token>): Either<Error, Command> =
+    context(Raise<Error>)
+    fun parse(tokens: List<Token>): Command =
         parsers
             .firstOrNull { it.canTry(tokens) }
             ?.parse(tokens)
-            ?: Errors.invalidInput().left()
+            ?: raise(Errors.invalidInput())
 }

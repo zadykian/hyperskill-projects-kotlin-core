@@ -26,8 +26,8 @@ class CalculationTests {
     @MethodSource("positiveTestCases")
     fun parseAndEvaluateExpression(testCase: CalcSuccess) {
         val invocationResult = either {
-            val command = ExpressionCommandParser.parse(testCase.input).bind()
-            Calculator().evaluate(command.expression).bind()
+            val command = ExpressionCommandParser.parse(testCase.input)
+            Calculator().evaluate(command.expression)
         }
 
         assertThat(invocationResult).isEqualTo(testCase.expected.right())
@@ -37,8 +37,8 @@ class CalculationTests {
     @MethodSource("negativeTestCases")
     fun failWithCorrectError(testCase: CalcFailure) {
         val invocationResult = either {
-            val command = ExpressionCommandParser.parse(testCase.input).bind()
-            Calculator().evaluate(command.expression).bind()
+            val command = ExpressionCommandParser.parse(testCase.input)
+            Calculator().evaluate(command.expression)
         }
 
         assertThat(invocationResult).isEqualTo(testCase.expected.left())
@@ -63,11 +63,11 @@ class CalculationTests {
 
         val result = either {
             assignmentTokens
-                .map { AssignmentCommandParser.parse(it).bind() }
+                .map { AssignmentCommandParser.parse(it) }
                 .forEach { calculator.assign(it.identifier, it.expression) }
 
-            val expression = ExpressionParser.parse(expressionTokens).bind()
-            calculator.evaluate(expression).bind()
+            val expression = ExpressionParser.parse(expressionTokens)
+            calculator.evaluate(expression)
         }
 
         assertThat(result).isEqualTo(Either.Right(53))
