@@ -10,6 +10,8 @@ data class CalculatorError(override val displayText: String) : Error
 
 object Errors {
     fun unknownIdentifier() = CalculatorError("Unknown identifier")
+    fun exponentValueTooSmallOrLarge() = CalculatorError("Exponent value either too small or too large")
+    fun divideByZero() = CalculatorError("Attempt to divide by zero")
 
     fun emptyInput() = ParserError("Empty input")
     fun invalidInput() = ParserError("Invalid input")

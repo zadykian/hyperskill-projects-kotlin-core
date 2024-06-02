@@ -1,9 +1,13 @@
 package calculator.parser
 
 import arrow.core.raise.Raise
+import calculator.Value
+import java.math.BigInteger
 
 sealed interface Token {
-    class Number(val value: Int) : Token {
+    class Number(val value: Value) : Token {
+        constructor(value: Int) : this(value.toBigInteger())
+
         override fun toString() = value.toString()
     }
 
@@ -44,7 +48,7 @@ object Lexer {
             val (nextToken, charsConsumed) = when {
                 char.isDigit() -> {
                     val uIntString = input.takeFromWhile(index) { it.isDigit() }
-                    Pair(Token.Number(uIntString.toInt()), uIntString.length)
+                    Pair(Token.Number(BigInteger(uIntString)), uIntString.length)
                 }
 
                 char.isWordChar() -> {

@@ -1,6 +1,8 @@
 package calculator
 
-typealias Value = Int
+import java.math.BigInteger
+
+typealias Value = BigInteger
 
 enum class Associativity {
     Left,
@@ -27,7 +29,9 @@ sealed interface Operator {
 
 sealed interface ExpressionTerm {
     @JvmInline
-    value class Num(val value: Value) : ExpressionTerm
+    value class Num(val value: Value) : ExpressionTerm {
+        constructor(value: Int) : this(value.toBigInteger())
+    }
 
     @JvmInline
     value class Id(val value: Identifier) : ExpressionTerm

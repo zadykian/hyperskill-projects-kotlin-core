@@ -5,7 +5,6 @@ import arrow.core.right
 import assertk.assertThat
 import assertk.assertions.isEqualTo
 import calculator.Calculator
-import calculator.Value
 import calculator.parser.*
 import calculator.parser.Token.*
 import calculator.parser.Token.Number
@@ -17,7 +16,7 @@ sealed class CalcTestCase(val input: List<Token>) {
     override fun toString(): String = input.joinToString(separator = " ")
 }
 
-class CalcSuccess(input: List<Token>, val expected: Value) : CalcTestCase(input)
+class CalcSuccess(input: List<Token>, val expected: Int) : CalcTestCase(input)
 
 class CalcFailure(input: List<Token>, val expected: Error) : CalcTestCase(input)
 
@@ -30,7 +29,7 @@ class CalculationTests {
             Calculator().evaluate(command.expression)
         }
 
-        assertThat(invocationResult).isEqualTo(testCase.expected.right())
+        assertThat(invocationResult).isEqualTo(testCase.expected.toBigInteger().right())
     }
 
     @ParameterizedTest
@@ -70,7 +69,7 @@ class CalculationTests {
             calculator.evaluate(expression)
         }
 
-        assertThat(result).isEqualTo(Either.Right(53))
+        assertThat(result).isEqualTo(Either.Right(53.toBigInteger()))
     }
 
     companion object {
