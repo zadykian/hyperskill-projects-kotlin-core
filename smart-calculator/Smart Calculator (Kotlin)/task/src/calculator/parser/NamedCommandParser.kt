@@ -23,7 +23,7 @@ object NamedCommandParser : CommandParser<Command> {
             Errors.invalidCommandInvocation()
         }
 
-        val commandName = (tokens[0] as Token.Word).value.lowercase()
+        val commandName = (tokens[1] as Token.Word).value.lowercase()
         return namedCommands[commandName] ?: raise(Errors.unknownCommand())
     }
 }
