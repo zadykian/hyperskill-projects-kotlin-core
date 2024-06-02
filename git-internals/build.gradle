@@ -5,7 +5,7 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$hs.kotlin.version"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.23"
     }
 }
 
@@ -40,7 +40,13 @@ subprojects {
     }
 
     dependencies {
+        implementation 'io.arrow-kt:arrow-core:1.2.4'
         testImplementation 'com.github.hyperskill:hs-test:release-SNAPSHOT'
+
+        testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.0'
+        testImplementation 'org.junit.jupiter:junit-jupiter-params:5.7.0'
+        testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.0'
+        testImplementation 'com.willowtreeapps.assertk:assertk:0.28.0'
     }
 
     configurations.all {
