@@ -20,35 +20,41 @@ class GitObjectHeader(private val type: GitObjectType, private val sizeInBytes: 
 }
 
 class GitObjectHash private constructor(val value: String) {
-    private val sha1Regex = "[a-fA-F0-9]{40}".toRegex()
-    private val sha256Regex = "[a-fA-F0-9]{64}".toRegex()
+    companion object {
+        private val sha1Regex = "[a-fA-F0-9]{40}".toRegex()
+        private val sha256Regex = "[a-fA-F0-9]{64}".toRegex()
 
-    operator fun invoke(gitObjectHash: String): Either<Error.InvalidGitObjectHash, GitObjectHash> =
-        if (gitObjectHash.run { matches(sha1Regex) || matches(sha256Regex) })
-            GitObjectHash(gitObjectHash).right()
-        else Error.InvalidGitObjectHash.left()
+        operator fun invoke(gitObjectHash: String): Either<Error.InvalidGitObjectHash, GitObjectHash> =
+            if (gitObjectHash.run { matches(sha1Regex) || matches(sha256Regex) })
+                GitObjectHash(gitObjectHash).right()
+            else Error.InvalidGitObjectHash.left()
+    }
 }
 
+private typealias RaiseGitObjectNotFound = Raise<Error.GitObjectNotFound>
+private typealias RaiseInvalidGitObjectHeader = Raise<Error.InvalidGitObjectHeader>
+private typealias RaiseFailedToReadGitObject = Raise<Error.FailedToReadGitObject>
+
 object GitObjectHeaderReader {
-    context(Raise<Error>)
+    context(RaiseGitObjectNotFound, RaiseInvalidGitObjectHeader, RaiseFailedToReadGitObject)
     fun read(gitRootDirectory: Path, gitObjectHash: GitObjectHash): GitObjectHeader {
         val gitObjectPath = gitRootDirectory
             .resolve("objects")
             .resolve(gitObjectHash.value.substring(0, 2))
             .resolve(gitObjectHash.value.substring(2))
 
-        ensure(Files.exists(gitObjectPath)) { Error.GitObjectNotFound }
+        this@RaiseGitObjectNotFound.ensure(Files.exists(gitObjectPath)) { Error.GitObjectNotFound }
 
         return loadObjectHeader(gitObjectPath)
     }
 
-    context(Raise<Error.InvalidGitObjectHeader>)
+    context(RaiseInvalidGitObjectHeader, RaiseFailedToReadGitObject)
     private fun loadObjectHeader(gitObjectPath: Path): GitObjectHeader {
-        val firstLine = Files
-            .newInputStream(gitObjectPath)
-            .let { InflaterInputStream(it) }
-            .bufferedReader()
-            .use { it.readWhile { char -> char != '\u0000' }.joinToString(separator = "") }
+        val firstLine = try {
+            readFirstLine(gitObjectPath)
+        } catch (exception: Exception) {
+            raise(Error.FailedToReadGitObject(exception.localizedMessage))
+        }
 
         val firstLineTokens = firstLine.split(' ').map { it.trim() }
 
@@ -64,4 +70,11 @@ object GitObjectHeaderReader {
 
         return GitObjectHeader(objectType, sizeInBytes)
     }
+
+    private fun readFirstLine(gitObjectPath: Path) =
+        Files
+            .newInputStream(gitObjectPath)
+            .let { InflaterInputStream(it) }
+            .bufferedReader()
+            .use { it.readWhile { char -> char != '\u0000' }.joinToString(separator = "") }
 }
