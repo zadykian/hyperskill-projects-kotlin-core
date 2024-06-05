@@ -5,7 +5,7 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.23"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:2.0.0"
     }
 }
 
@@ -42,7 +42,7 @@ subprojects {
     repositories {
         mavenCentral()
         maven { url "https://packages.jetbrains.team/maven/p/hyperskill-hs-test/maven" }
-		maven { url "https://jitpack.io" }
+        maven { url "https://jitpack.io" }
     }
 
     dependencies {
@@ -81,7 +81,7 @@ project(':util') {
     }
 }
 
-configure(subprojects.findAll {it.name != 'util'}) {
+configure(subprojects.findAll { it.name != 'util' }) {
     dependencies {
         testImplementation project(':util').sourceSets.main.output
         testImplementation project(':util').sourceSets.test.output
