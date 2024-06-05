@@ -1,5 +1,10 @@
 package gitinternals
 
+import arrow.core.Either
+import arrow.core.left
+import arrow.core.raise.Raise
+import arrow.core.raise.ensure
+import arrow.core.right
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.zip.InflaterInputStream
@@ -14,28 +19,31 @@ class GitObjectHeader(private val type: GitObjectType, private val sizeInBytes: 
     override fun toString() = "type:${type.toString().lowercase()} length:$sizeInBytes"
 }
 
-object GitObjectHeaderReader {
+class GitObjectHash private constructor(val value: String) {
     private val sha1Regex = "[a-fA-F0-9]{40}".toRegex()
     private val sha256Regex = "[a-fA-F0-9]{64}".toRegex()
 
-    fun read(gitRootDirectory: Path, gitObjectHash: String): Result<GitObjectHeader> {
-        if (!gitObjectHash.run { matches(sha1Regex) || matches(sha256Regex) }) {
-            return Failure(Errors.INVALID_GIT_OBJECT_HASH)
-        }
+    operator fun invoke(gitObjectHash: String): Either<Error.InvalidGitObjectHash, GitObjectHash> =
+        if (gitObjectHash.run { matches(sha1Regex) || matches(sha256Regex) })
+            GitObjectHash(gitObjectHash).right()
+        else Error.InvalidGitObjectHash.left()
+}
 
+object GitObjectHeaderReader {
+    context(Raise<Error>)
+    fun read(gitRootDirectory: Path, gitObjectHash: GitObjectHash): GitObjectHeader {
         val gitObjectPath = gitRootDirectory
             .resolve("objects")
-            .resolve(gitObjectHash.substring(0, 2))
-            .resolve(gitObjectHash.substring(2))
+            .resolve(gitObjectHash.value.substring(0, 2))
+            .resolve(gitObjectHash.value.substring(2))
 
-        if (Files.notExists(gitObjectPath)) {
-            return Failure(Errors.GIT_OBJECT_NOT_FOUND)
-        }
+        ensure(Files.exists(gitObjectPath)) { Error.GitObjectNotFound }
 
         return loadObjectHeader(gitObjectPath)
     }
 
-    private fun loadObjectHeader(gitObjectPath: Path): Result<GitObjectHeader> {
+    context(Raise<Error.InvalidGitObjectHeader>)
+    private fun loadObjectHeader(gitObjectPath: Path): GitObjectHeader {
         val firstLine = Files
             .newInputStream(gitObjectPath)
             .let { InflaterInputStream(it) }
@@ -48,12 +56,12 @@ object GitObjectHeaderReader {
             "blob" -> GitObjectType.Blob
             "commit" -> GitObjectType.Commit
             "tree" -> GitObjectType.Tree
-            else -> return Failure(Errors.invalidGitObjectHeader(firstLine))
+            else -> raise(Error.InvalidGitObjectHeader(firstLine))
         }
 
         val sizeInBytes = firstLineTokens[1].toULongOrNull()
-            ?: return Failure(Errors.invalidGitObjectHeader(firstLine))
+            ?: raise(Error.InvalidGitObjectHeader(firstLine))
 
-        return Success(GitObjectHeader(objectType, sizeInBytes))
+        return GitObjectHeader(objectType, sizeInBytes)
     }
 }

@@ -27,6 +27,12 @@ subprojects {
         }
     }
 
+    kotlin {
+        compilerOptions {
+            freeCompilerArgs = ["-Xcontext-receivers"]
+        }
+    }
+
     compileTestJava {
         javaCompiler = javaToolchains.compilerFor {
             languageVersion = JavaLanguageVersion.of(testJava)
