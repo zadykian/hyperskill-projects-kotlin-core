@@ -10,6 +10,8 @@ import java.nio.file.Path
 import java.util.zip.InflaterInputStream
 
 class GitObjectHash private constructor(val value: String) {
+    override fun toString() = value
+
     companion object {
         private val sha1Regex = "[a-fA-F0-9]{40}".toRegex()
         private val sha256Regex = "[a-fA-F0-9]{64}".toRegex()
@@ -57,7 +59,7 @@ object GitObjectReader {
             else -> raise(Error.InvalidGitObjectHeader(firstLine))
         }
 
-        return parser.parse(fileContentLines)
+        return parser.parse(fileContentLines.drop(1))
     }
 
     private fun readLines(gitObjectPath: Path): List<String> =
