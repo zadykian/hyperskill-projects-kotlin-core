@@ -22,7 +22,7 @@ class Application(private val io: IO) {
     private fun getGitObjectHeader() = either {
         val gitRoot = getGitRootDirectory()
         val gitObjectHash = getGitObjectHash()
-        GitObjectHeaderReader.read(gitRoot, gitObjectHash)
+        GitObjectReader.read(gitRoot, gitObjectHash)
     }
 
     context(RaiseDirectoryNotFound, RaiseInvalidDirectoryPath)
