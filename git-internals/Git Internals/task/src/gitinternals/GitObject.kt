@@ -18,11 +18,11 @@ sealed interface GitObject {
         val message: String,
     ) : GitObject {
         override fun toString() = buildString {
-            fun <T> appendLine(vararg values: T) = append(values).append("\n")
+            fun <T> appendLine(vararg values: T) = append(*values).append("\n")
             appendLine("tree: ", tree)
             appendLine("parents: ", parents.joinToString(separator = "|"))
-            appendLine("author: ", author, "original timestamp: ", dateTimeFormatter.format(createdAt))
-            appendLine("committer: ", committer, "commit timestamp: ", dateTimeFormatter.format(committedAt))
+            appendLine("author: ", author, " original timestamp: ", dateTimeFormatter.format(createdAt))
+            appendLine("committer: ", committer, " commit timestamp: ", dateTimeFormatter.format(committedAt))
             append("commit message: ", message)
         }
 
@@ -31,6 +31,9 @@ sealed interface GitObject {
         }
     }
 
-    data object Blob : GitObject
+    data class Blob(val content: String) : GitObject {
+        override fun toString() = content
+    }
+
     data object Tree : GitObject
 }
