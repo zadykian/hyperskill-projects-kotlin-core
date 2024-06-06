@@ -20,10 +20,12 @@ sealed interface GitObject {
         override fun toString() = buildString {
             fun <T> appendLine(vararg values: T) = append(*values).append("\n")
             appendLine("tree: ", tree)
-            appendLine("parents: ", parents.joinToString(separator = "|"))
+            if (parents.isNotEmpty()) {
+                appendLine("parents: ", parents.joinToString(separator = " | "))
+            }
             appendLine("author: ", author, " original timestamp: ", dateTimeFormatter.format(createdAt))
             appendLine("committer: ", committer, " commit timestamp: ", dateTimeFormatter.format(committedAt))
-            append("commit message: ", message)
+            append("commit message:", message)
         }
 
         companion object {

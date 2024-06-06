@@ -12,7 +12,7 @@ object GitCommitParser : GitObjectParser<GitObject.Commit> {
     context(Raise<Error.ParsingFailed>)
     override fun parse(lines: List<String>): GitObject.Commit {
         val keyedLines = getKeyedLines(lines)
-        fun get(key: String) = keyedLines[key] ?: raise(Error.ParsingFailed())
+        fun get(key: String) = keyedLines[key] ?: emptyList()
 
         val tree = GitObjectHash(get("tree").first().first()).bind()
 
@@ -60,7 +60,9 @@ object GitCommitParser : GitObjectParser<GitObject.Commit> {
             .takeWhile { it.isNotBlank() }
             .mapIndexed { index, line -> Pair(index, line.split(' ').map(String::trim)) }
             .groupBy {
-                ensure(it.second.size >= 2) { Error.ParsingFailed() }
+                ensure(it.second.size >= 2) {
+                    Error.ParsingFailed("Line ${it.first} has unexpected content: ${lines[it.first]}")
+                }
                 it.second.first()
             }
             .mapValues {
