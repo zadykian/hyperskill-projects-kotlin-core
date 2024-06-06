@@ -1,6 +1,5 @@
 package gitinternals
 
-import arrow.core.NonEmptyList
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
@@ -11,7 +10,7 @@ data class UserData(val name: String, val email: String) {
 sealed interface GitObject {
     data class Commit(
         val tree: GitObjectHash,
-        val parents: NonEmptyList<GitObjectHash>,
+        val parents: List<GitObjectHash>,
         val author: UserData,
         val createdAt: ZonedDateTime,
         val committer: UserData,
