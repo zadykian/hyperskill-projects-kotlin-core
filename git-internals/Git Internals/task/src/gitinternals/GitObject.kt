@@ -27,7 +27,7 @@ sealed interface GitObject {
         }
 
         companion object {
-            private val dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss x")
+            private val dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss xxx")
         }
     }
 

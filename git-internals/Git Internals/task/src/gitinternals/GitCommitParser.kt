@@ -45,7 +45,7 @@ object GitCommitParser : GitObjectParser<GitObject.Commit> {
         }
         val (name, email, timestamp, timezone) = lineTokens.first()
         return try {
-            val user = UserData(name, email)
+            val user = UserData(name, email.trimStart('<').trimEnd('>'))
             val unixEpoch = timestamp.toLongOrNull() ?: raise(Error.ParsingFailed("Invalid timestamp ($timestamp)"))
             val dateTime = Instant.ofEpochSecond(unixEpoch).atZone(ZoneOffset.of(timezone))
             Pair(user, dateTime)

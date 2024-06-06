@@ -15,7 +15,10 @@ private typealias RaiseInvalidDirectoryPath = Raise<Error.InvalidDirectoryPath>
 class Application(private val io: IO) {
     fun run() {
         getGitObjectHeader()
-            .onRight { io.write(it.toString()) }
+            .onRight {
+                io.write("*${it::class.simpleName!!.uppercase()}*")
+                io.write(it.toString())
+            }
             .onLeft { io.write(it.displayText) }
     }
 
