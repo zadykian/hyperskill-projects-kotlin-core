@@ -10,8 +10,8 @@ private typealias LineTokens = List<String>
 
 object GitCommitParser : GitObjectParser<Commit> {
     context(RaiseParsingFailed)
-    override fun parse(content: NonEmptyString): Commit {
-        val contentLines = content.split("\n")
+    override fun parse(content: ByteArray): Commit {
+        val contentLines = content.toStringUtf8().split("\n")
         val keyedLines = getKeyedLines(contentLines)
         fun get(key: String) = keyedLines[key] ?: emptyList()
 

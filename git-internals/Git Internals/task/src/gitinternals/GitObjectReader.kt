@@ -12,15 +12,15 @@ import java.util.zip.InflaterInputStream
 
 typealias RaiseFailedToReadGitObject = Raise<Error.FailedToReadGitObject>
 
-private data class GitObjectFile(val header: NonEmptyString, val content: NonEmptyString)
+private class GitObjectFile(val header: NonEmptyString, val content: ByteArray)
 
 object GitObjectReader {
     context(RaiseFailedToReadGitObject, RaiseParsingFailed)
     fun read(gitRootDirectory: Path, gitObjectHash: GitObjectHash): GitObject {
         val gitObjectPath = gitRootDirectory
             .resolve("objects")
-            .resolve(gitObjectHash.value.substring(0, 2))
-            .resolve(gitObjectHash.value.substring(2))
+            .resolve(gitObjectHash.toString().substring(0, 2))
+            .resolve(gitObjectHash.toString().substring(2))
 
         this@RaiseFailedToReadGitObject.ensure(Files.exists(gitObjectPath)) {
             Error.FailedToReadGitObject("Git object with specified hash does not exist on disk!")
@@ -31,26 +31,26 @@ object GitObjectReader {
 
     context(RaiseFailedToReadGitObject, RaiseParsingFailed)
     private fun loadObject(gitObjectPath: Path): GitObject {
-        val (header, content) = try {
+        val file = try {
             readFile(gitObjectPath)
         } catch (exception: Exception) {
             raise(Error.FailedToReadGitObject(exception.localizedMessage))
         }
 
-        this@RaiseFailedToReadGitObject.ensure(content.isNotEmpty()) {
+        this@RaiseFailedToReadGitObject.ensure(file.content.isNotEmpty()) {
             Error.FailedToReadGitObject("Git object file is empty")
         }
 
-        val fileType = header.takeWhile { !it.isWhitespace() }.toString().lowercase()
+        val fileType = file.header.takeWhile { !it.isWhitespace() }.toString().lowercase()
 
         val parser = when (fileType) {
             "blob" -> GitBlobParser
             "commit" -> GitCommitParser
             "tree" -> GitTreeParser
-            else -> raise(Error.UnknownGitObjectType(header))
+            else -> raise(Error.UnknownGitObjectType(file.header))
         }
 
-        return parser.parse(content)
+        return parser.parse(file.content)
     }
 
     context(RaiseFailedToReadGitObject)
@@ -58,13 +58,23 @@ object GitObjectReader {
         Files
             .newInputStream(gitObjectPath)
             .let { InflaterInputStream(it) }
-            .bufferedReader()
             .use {
-                val header = it.readWhile { char -> char != '\u0000' }.toNonEmptyStringOrNull()
+                val fullContent = it.readBytes()
+                val indexOfFirstNull = fullContent.indexOfFirst { byte -> byte == 0.toByte() }
+
+                val header = fullContent
+                    .asList().subList(0, indexOfFirstNull)
+                    .toStringUtf8()
+                    .toNonEmptyStringOrNull()
                     ?: raise(Error.FailedToReadGitObject("File header is not expected to be empty"))
-                val content = it.readText().toNonEmptyStringOrNull()
-                    ?: raise(Error.FailedToReadGitObject("File content is not expected to be empty"))
+
+                val content = fullContent
+                    .asList().subList(indexOfFirstNull + 1, fullContent.size)
+                    .toByteArray()
+
                 GitObjectFile(header, content)
             }
 }
 
+fun List<Byte>.toStringUtf8(): String = String(this.toByteArray(), Charsets.UTF_8)
+fun ByteArray.toStringUtf8(): String = String(this, Charsets.UTF_8)

@@ -11,8 +11,8 @@ data class UserData(val name: NonEmptyString, val email: NonEmptyString) {
     override fun toString() = "$name $email"
 }
 
-class GitObjectHash private constructor(val value: String) {
-    override fun toString() = value
+class GitObjectHash private constructor(private val hexValue: String) {
+    override fun toString() = hexValue
 
     companion object {
         private val sha1Regex = "[a-fA-F0-9]{40}".toRegex()
@@ -20,8 +20,17 @@ class GitObjectHash private constructor(val value: String) {
 
         operator fun invoke(gitObjectHash: String): Either<Error.InvalidGitObjectHash, GitObjectHash> =
             if (gitObjectHash.run { matches(sha1Regex) || matches(sha256Regex) })
-                GitObjectHash(gitObjectHash).right()
+                GitObjectHash(gitObjectHash.lowercase()).right()
             else Error.InvalidGitObjectHash.left()
+
+        operator fun invoke(bytes: List<Byte>): Either<Error.InvalidGitObjectHash, GitObjectHash> {
+            if (bytes.size != 20 && bytes.size != 32) {
+                return Error.InvalidGitObjectHash.left()
+            }
+
+            val hexString = bytes.joinToString(separator = "") { String.format("%02x", it) }
+            return GitObjectHash(hexString).right()
+        }
     }
 }
 
