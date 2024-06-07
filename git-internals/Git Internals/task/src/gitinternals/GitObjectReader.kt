@@ -1,17 +1,20 @@
 package gitinternals
 
+import arrow.core.NonEmptyList
 import arrow.core.raise.Raise
 import arrow.core.raise.ensure
+import arrow.core.toNonEmptyListOrNull
+import gitinternals.parse.GitBlobParser
+import gitinternals.parse.GitCommitParser
+import gitinternals.parse.GitTreeParser
+import gitinternals.parse.RaiseParsingFailed
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.zip.InflaterInputStream
 
 typealias RaiseFailedToReadGitObject = Raise<Error.FailedToReadGitObject>
-typealias RaiseParsingFailed = Raise<Error.ParsingFailed>
 
-interface GitObjectParser<out TGitObject : GitObject> {
-    context(RaiseParsingFailed) fun parse(lines: List<String>): TGitObject
-}
+private data class GitObjectFile(val header: String, val contentLines: NonEmptyList<String>)
 
 object GitObjectReader {
     context(RaiseFailedToReadGitObject, RaiseParsingFailed)
@@ -30,39 +33,38 @@ object GitObjectReader {
 
     context(RaiseFailedToReadGitObject, RaiseParsingFailed)
     private fun loadObject(gitObjectPath: Path): GitObject {
-        val fileContentLines = try {
-            readLines(gitObjectPath)
+        val (header, contentLines) = try {
+            readFile(gitObjectPath)
         } catch (exception: Exception) {
             raise(Error.FailedToReadGitObject(exception.localizedMessage))
         }
 
-        this@RaiseFailedToReadGitObject.ensure(fileContentLines.isNotEmpty()) {
+        this@RaiseFailedToReadGitObject.ensure(contentLines.isNotEmpty()) {
             Error.FailedToReadGitObject("Git object file is empty")
         }
 
-        val firstLine = fileContentLines.first()
-        val firstLineTokens = firstLine.split(' ').map { it.trim() }
+        val fileType = header.takeWhile { !it.isWhitespace() }.lowercase()
 
-        val parser = when (firstLineTokens[0].lowercase()) {
+        val parser = when (fileType) {
             "blob" -> GitBlobParser
             "commit" -> GitCommitParser
             "tree" -> GitTreeParser
-            else -> raise(Error.UnknownGitObjectType(firstLine))
+            else -> raise(Error.UnknownGitObjectType(header))
         }
 
-        return parser.parse(fileContentLines.drop(1))
+        return parser.parse(contentLines)
     }
 
-    private fun readLines(gitObjectPath: Path): List<String> =
+    context(RaiseFailedToReadGitObject)
+    private fun readFile(gitObjectPath: Path): GitObjectFile =
         Files
             .newInputStream(gitObjectPath)
             .let { InflaterInputStream(it) }
             .bufferedReader()
             .use {
-                buildList {
-                    val headerLine = it.readWhile { char -> char != '\u0000' }.joinToString(separator = "")
-                    add(headerLine)
-                    it.forEachLine { add(it) }
-                }
+                val header = it.readWhile { char -> char != '\u0000' }.joinToString(separator = "")
+                val contentLines = it.readLines().toNonEmptyListOrNull()
+                    ?: raise(Error.FailedToReadGitObject("File content is not expected to be empty"))
+                GitObjectFile(header, contentLines)
             }
 }

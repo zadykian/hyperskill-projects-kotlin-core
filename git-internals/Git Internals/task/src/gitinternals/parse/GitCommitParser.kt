@@ -1,15 +1,20 @@
-package gitinternals
+package gitinternals.parse
 
+import arrow.core.NonEmptyList
 import arrow.core.raise.ensure
+import gitinternals.Commit
+import gitinternals.Error
+import gitinternals.GitObjectHash
+import gitinternals.UserData
 import java.time.Instant
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
 
 private typealias LineTokens = List<String>
 
-object GitCommitParser : GitObjectParser<GitObject.Commit> {
+object GitCommitParser : GitObjectParser<Commit> {
     context(RaiseParsingFailed)
-    override fun parse(lines: List<String>): GitObject.Commit {
+    override fun parse(lines: NonEmptyList<String>): Commit {
         val keyedLines = getKeyedLines(lines)
         fun get(key: String) = keyedLines[key] ?: emptyList()
 
@@ -19,7 +24,7 @@ object GitCommitParser : GitObjectParser<GitObject.Commit> {
         val (committer, committedAt) = userAndDate(get("committer"))
         val message = lines.drop(parents.size + 3).joinToString("\n")
 
-        return GitObject.Commit(
+        return Commit(
             tree = tree,
             parents = parents,
             author = author,
