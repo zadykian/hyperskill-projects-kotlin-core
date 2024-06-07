@@ -1,10 +1,27 @@
 package gitinternals
 
+import arrow.core.Either
+import arrow.core.left
+import arrow.core.right
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
 data class UserData(val name: String, val email: String) {
     override fun toString() = "$name $email"
+}
+
+class GitObjectHash private constructor(val value: String) {
+    override fun toString() = value
+
+    companion object {
+        private val sha1Regex = "[a-fA-F0-9]{40}".toRegex()
+        private val sha256Regex = "[a-fA-F0-9]{64}".toRegex()
+
+        operator fun invoke(gitObjectHash: String): Either<Error.InvalidGitObjectHash, GitObjectHash> =
+            if (gitObjectHash.run { matches(sha1Regex) || matches(sha256Regex) })
+                GitObjectHash(gitObjectHash).right()
+            else Error.InvalidGitObjectHash.left()
+    }
 }
 
 sealed interface GitObject {

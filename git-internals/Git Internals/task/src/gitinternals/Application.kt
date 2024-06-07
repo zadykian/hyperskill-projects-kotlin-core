@@ -9,12 +9,13 @@ import java.nio.file.Paths
 
 data class IO(val read: () -> String, val write: (String) -> Unit)
 
-private typealias RaiseDirectoryNotFound = Raise<Error.DirectoryNotFound>
-private typealias RaiseInvalidDirectoryPath = Raise<Error.InvalidDirectoryPath>
+typealias RaiseDirectoryNotFound = Raise<Error.DirectoryNotFound>
+typealias RaiseInvalidDirectoryPath = Raise<Error.InvalidDirectoryPath>
+typealias RaiseInvalidGitObjectHash = Raise<Error.InvalidGitObjectHash>
 
 class Application(private val io: IO) {
     fun run() {
-        getGitObjectHeader()
+        readGitObject()
             .onRight {
                 io.write("*${it::class.simpleName!!.uppercase()}*")
                 io.write(it.toString())
@@ -22,7 +23,7 @@ class Application(private val io: IO) {
             .onLeft { io.write(it.displayText) }
     }
 
-    private fun getGitObjectHeader() = either {
+    private fun readGitObject() = either {
         val gitRoot = getGitRootDirectory()
         val gitObjectHash = getGitObjectHash()
         GitObjectReader.read(gitRoot, gitObjectHash)
@@ -41,10 +42,15 @@ class Application(private val io: IO) {
         return path
     }
 
-    context(Raise<Error.InvalidGitObjectHash>)
+    context(RaiseInvalidGitObjectHash)
     private fun getGitObjectHash(): GitObjectHash {
         io.write(Requests.GIT_OBJECT_HASH)
         val objectHashString = io.read()
         return GitObjectHash(objectHashString).bind()
+    }
+
+    private object Requests {
+        const val GIT_ROOT_DIRECTORY = "Enter .git directory location:"
+        const val GIT_OBJECT_HASH = "Enter git object hash:"
     }
 }
