@@ -2,8 +2,14 @@ package gitinternals
 
 import arrow.core.Either
 import arrow.core.left
+import arrow.core.raise.Raise
 import arrow.core.right
+import java.nio.file.Files
 import java.nio.file.Path
+import kotlin.streams.asSequence
+
+typealias RaiseFailedToReadGitBranch = Raise<Error.FailedToReadGitBranch>
+typealias RaiseInvalidGitBranches = Raise<Error.InvalidGitBranches>
 
 data class GitBranch(val name: NonEmptyString)
 
@@ -21,14 +27,49 @@ class GitBranches private constructor(private val current: GitBranch, private va
             others: List<GitBranch>
         ): Either<Error.InvalidGitBranches, GitBranches> {
             val othersSet = others.toSet()
-            return if (current in othersSet) Error.InvalidGitBranches.left()
+            return if (current in othersSet)
+                Error.InvalidGitBranches("Current branch should not belong to the set of others").left()
             else GitBranches(current, othersSet).right()
         }
     }
 }
 
 object GitBranchesReader {
+    context(RaiseFailedToReadGitBranch, RaiseInvalidGitBranches)
     fun read(gitRootDirectory: Path): GitBranches {
-        TODO()
+        fun raise(text: CharSequence): Nothing = raise(Error.FailedToReadGitBranch(text))
+        val branchesDir = gitRootDirectory.resolve("refs").resolve("heads")
+
+        val allBranches = try {
+            Files.list(branchesDir).asSequence().map { getBranchFromFile(it) }.toList()
+        } catch (e: Exception) {
+            raise("Error during branches enumeration: ${e.localizedMessage}")
+        }
+
+        val currentBranchName = getCurrentBranchName(gitRootDirectory)
+        val currentBranch = allBranches.find { it.name == currentBranchName }
+            ?: raise("Current branch '$currentBranchName' does not present in the list of all branches")
+        val others = allBranches.minus(currentBranch)
+        return GitBranches(currentBranch, others).bind()
+    }
+
+    context(Raise<Error.InvalidGitBranches>)
+    private fun getBranchFromFile(branchFile: Path): GitBranch {
+        val fileName = branchFile.fileName.toString().toNonEmptyStringOrNull()
+            ?: raise(Error.InvalidGitBranches("Branch file name '$branchFile' is invalid'"))
+        return GitBranch(fileName)
+    }
+
+    context(RaiseFailedToReadGitBranch)
+    private fun getCurrentBranchName(gitRootDirectory: Path): NonEmptyString {
+        val headFilePath = gitRootDirectory.resolve("HEAD")
+        val fileContent = try {
+            Files.readString(headFilePath)
+        } catch (e: Exception) {
+            raise(Error.FailedToReadGitBranch("Failed to read HEAD file's content: ${e.localizedMessage}"))
+        }
+
+        return fileContent.replaceFirst("ref: refs/heads/", "").trim().toNonEmptyStringOrNull()
+            ?: raise(Error.FailedToReadGitBranch("Unexpected HEAD file content: '$fileContent'"))
     }
 }
