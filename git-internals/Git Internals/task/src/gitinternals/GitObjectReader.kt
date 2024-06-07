@@ -4,7 +4,7 @@ import arrow.core.raise.Raise
 import arrow.core.raise.ensure
 import gitinternals.parse.GitBlobParser
 import gitinternals.parse.GitCommitParser
-import gitinternals.parse.GitTreeParser
+import gitinternals.parse.GitTreeViewParser
 import gitinternals.parse.RaiseParsingFailed
 import java.nio.file.Files
 import java.nio.file.Path
@@ -46,7 +46,7 @@ object GitObjectReader {
         val parser = when (fileType) {
             "blob" -> GitBlobParser
             "commit" -> GitCommitParser
-            "tree" -> GitTreeParser
+            "tree" -> GitTreeViewParser
             else -> raise(Error.UnknownGitObjectType(file.header))
         }
 

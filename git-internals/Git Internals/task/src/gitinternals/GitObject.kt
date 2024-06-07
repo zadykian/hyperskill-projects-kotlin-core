@@ -55,14 +55,20 @@ data class GitCommit(
     }
 }
 
-data class GitBlob(val content: NonEmptyString) : GitObject {
+sealed interface TreeNode : GitObject
+
+data class GitBlob(val content: NonEmptyString) : TreeNode {
     override fun toString() = content.toString()
 }
 
-data class GitTree(val nodes: NonEmptyList<Node>) : GitObject {
+data class GitTree(val nodes: NonEmptyList<NamedNode>) : TreeNode {
+    data class NamedNode(val name: NonEmptyString, val node: TreeNode)
+}
+
+data class GitTreeView(val nodes: NonEmptyList<NodeView>) : GitObject {
     override fun toString() = nodes.joinToString("\n")
 
-    data class Node(val permissionMetadataNumber: UInt, val objectHash: GitObjectHash, val name: NonEmptyString) {
+    data class NodeView(val permissionMetadataNumber: UInt, val objectHash: GitObjectHash, val name: NonEmptyString) {
         override fun toString() = "$permissionMetadataNumber $objectHash $name"
     }
 }
