@@ -8,9 +8,9 @@ import java.time.ZonedDateTime
 
 private typealias LineTokens = List<String>
 
-object GitCommitParser : GitObjectParser<Commit> {
+object GitCommitParser : GitObjectParser<GitCommit> {
     context(RaiseParsingFailed)
-    override fun parse(content: ByteArray): Commit {
+    override fun parse(content: ByteArray): GitCommit {
         val contentLines = content.toStringUtf8().split("\n")
         val keyedLines = getKeyedLines(contentLines)
         fun get(key: String) = keyedLines[key] ?: emptyList()
@@ -23,7 +23,7 @@ object GitCommitParser : GitObjectParser<Commit> {
         val message = contentLines.drop(parents.size + 3).joinToString("\n").toNonEmptyStringOrNull()
             ?: raise(Error.ParsingFailed("Commit message cannot be empty"))
 
-        return Commit(
+        return GitCommit(
             tree = tree,
             parents = parents,
             author = author,

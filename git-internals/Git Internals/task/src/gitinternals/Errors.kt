@@ -1,15 +1,17 @@
 package gitinternals
 
 sealed class Error(val displayText: CharSequence) {
-    data object UnknownCommand : Error("Unknown command")
-    data object InvalidDirectoryPath : Error("Specified path is invalid!")
-    data object DirectoryNotFound : Error("Specified directory does not exist!")
-
-    class InvalidGitBranches(message: CharSequence) : Error(message)
+    open class InvalidInput(displayText: CharSequence) : Error(displayText)
+    data object UnknownCommand : InvalidInput("Unknown command")
+    data object InvalidDirectoryPath : InvalidInput("Specified path is invalid!")
+    data object DirectoryNotFound : InvalidInput("Specified directory does not exist!")
 
     open class FailedToReadGitObject(message: CharSequence) : Error(message)
     class UnknownGitObjectType(actual: CharSequence) : FailedToReadGitObject("Unknown git object type '$actual'")
-    class FailedToReadGitBranch(message: CharSequence) : Error(message)
+
+    open class FailedToReadGitBranch(message: CharSequence) : Error(message)
+    class InvalidGitBranches(message: CharSequence) : FailedToReadGitBranch(message)
+    data object GitBranchNotFound : FailedToReadGitBranch("Git branch is not found")
 
     open class ParsingFailed(message: CharSequence) : Error(message)
     data object InvalidGitObjectHash :

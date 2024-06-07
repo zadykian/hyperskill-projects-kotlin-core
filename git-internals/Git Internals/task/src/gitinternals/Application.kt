@@ -20,24 +20,43 @@ class Application(private val io: IO) {
 
     context(Raise<Error>)
     private fun executeCommand() {
-        val gitRoot = requestGitRootDirectory()
+        val gitRootDirectory = requestGitRootDirectory()
         val command = requestCommand()
         when (command) {
-            Command.CatFile -> {
-                val gitObjectHash = requestGitObjectHash()
-                val gitObject = GitObjectReader.read(gitRoot, gitObjectHash)
-                io.write("*${gitObject::class.simpleName!!.uppercase()}*")
-                io.write(gitObject.toString())
-            }
+            Command.CatFile -> runCatFile(gitRootDirectory)
+            Command.ListBranches -> runListBranches(gitRootDirectory)
+            Command.Log -> runLog(gitRootDirectory)
+        }
+    }
 
-            Command.ListBranches -> {
-                val gitBranches = GitBranchesReader.readAll(gitRoot)
-                io.write(gitBranches.toString())
-            }
+    context(Raise<Error>)
+    private fun runCatFile(gitRootDirectory: Path) {
+        io.write(Requests.GIT_OBJECT_HASH)
+        val objectHashString = io.read()
+        val gitObjectHash = GitObjectHash(objectHashString).bind()
 
-            Command.Log -> {
-                TODO()
-            }
+        val gitObject = GitObjectReader.read(gitRootDirectory, gitObjectHash)
+        io.write("*${gitObject::class.simpleName!!.uppercase()}*")
+        io.write(gitObject.toString())
+    }
+
+    context(Raise<Error>)
+    private fun runListBranches(gitRootDirectory: Path) {
+        val gitBranches = GitBranchesReader.readAll(gitRootDirectory)
+        io.write(gitBranches.toString())
+    }
+
+    context(Raise<Error>)
+    private fun runLog(gitRootDirectory: Path) {
+        io.write(Requests.GIT_BRANCH_NAME)
+        val branchName = io.read().toNonEmptyStringOrNull() ?: raise(Error.InvalidInput("Branch name cannot be empty"))
+
+        val branch = GitBranchesReader.read(gitRootDirectory, branchName)
+        val gitLog = GitLogReader.read(gitRootDirectory, branch)
+
+        gitLog.forEachIndexed { index, commit ->
+            if (index > 0) io.write("")
+            io.write(commit.toStringCompact())
         }
     }
 
@@ -61,15 +80,9 @@ class Application(private val io: IO) {
         return path
     }
 
-    context(RaiseInvalidGitObjectHash)
-    private fun requestGitObjectHash(): GitObjectHash {
-        io.write(Requests.GIT_OBJECT_HASH)
-        val objectHashString = io.read()
-        return GitObjectHash(objectHashString).bind()
-    }
-
     private object Requests {
         const val COMMAND = "Enter command:"
+        const val GIT_BRANCH_NAME = "Enter branch name:"
         const val GIT_ROOT_DIRECTORY = "Enter .git directory location:"
         const val GIT_OBJECT_HASH = "Enter git object hash:"
     }

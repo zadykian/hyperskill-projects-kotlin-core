@@ -9,7 +9,6 @@ import java.nio.file.Path
 import kotlin.streams.asSequence
 
 typealias RaiseFailedToReadGitBranch = Raise<Error.FailedToReadGitBranch>
-typealias RaiseInvalidGitBranches = Raise<Error.InvalidGitBranches>
 
 data class GitBranch(val name: NonEmptyString, val commandHash: GitObjectHash)
 
@@ -35,26 +34,33 @@ class GitBranches private constructor(private val current: GitBranch, private va
 }
 
 object GitBranchesReader {
-    context(RaiseFailedToReadGitBranch, RaiseInvalidGitBranches, RaiseInvalidGitObjectHash)
+    context(RaiseFailedToReadGitBranch, RaiseInvalidGitObjectHash)
     fun readAll(gitRootDirectory: Path): GitBranches {
-        fun raise(text: CharSequence): Nothing = raise(Error.FailedToReadGitBranch(text))
-        val branchesDir = gitRootDirectory.resolve("refs").resolve("heads")
-
-        val allBranches = try {
-            Files.list(branchesDir).asSequence().map { read(it) }.toList()
-        } catch (e: Exception) {
-            raise("Error occurred during branches enumeration: ${e.localizedMessage}")
-        }
-
+        val allBranches = readAllBranchesFromDisk(gitRootDirectory)
         val currentBranchName = getCurrentBranchName(gitRootDirectory)
         val currentBranch = allBranches.find { it.name == currentBranchName }
-            ?: raise("Current branch '$currentBranchName' does not present in the list of all branches")
+            ?: raise(Error.FailedToReadGitBranch("Current branch '$currentBranchName' is missing"))
         val others = allBranches.minus(currentBranch)
         return GitBranches(currentBranch, others).bind()
     }
 
-    context(RaiseFailedToReadGitBranch, RaiseInvalidGitBranches, RaiseInvalidGitObjectHash)
-    fun read(branchFile: Path): GitBranch {
+    context(RaiseFailedToReadGitBranch, RaiseInvalidGitObjectHash)
+    fun read(gitRootDirectory: Path, branchName: NonEmptyString) =
+        readAllBranchesFromDisk(gitRootDirectory).firstOrNull { it.name == branchName }
+            ?: raise(Error.GitBranchNotFound)
+
+    context(RaiseFailedToReadGitBranch, RaiseInvalidGitObjectHash)
+    private fun readAllBranchesFromDisk(gitRootDirectory: Path): List<GitBranch> {
+        val branchesDir = gitRootDirectory.resolve("refs").resolve("heads")
+        return try {
+            Files.list(branchesDir).asSequence().map { readBranchFromDisk(it) }.toList()
+        } catch (e: Exception) {
+            raise(Error.FailedToReadGitBranch("Error occurred during branches enumeration: ${e.localizedMessage}"))
+        }
+    }
+
+    context(RaiseFailedToReadGitBranch, RaiseInvalidGitObjectHash)
+    private fun readBranchFromDisk(branchFile: Path): GitBranch {
         val fileName = branchFile.fileName.toString().toNonEmptyStringOrNull()
             ?: raise(Error.InvalidGitBranches("Branch file name '$branchFile' is invalid'"))
 

@@ -36,7 +36,7 @@ class GitObjectHash private constructor(private val hexValue: String) {
 
 sealed interface GitObject
 
-data class Commit(
+data class GitCommit(
     val tree: GitObjectHash,
     val parents: List<GitObjectHash>,
     val author: UserData,
@@ -56,16 +56,20 @@ data class Commit(
         append("commit message:", message)
     }
 
+    fun toStringCompact(): String {
+        TODO()
+    }
+
     companion object {
         private val dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss xxx")
     }
 }
 
-data class Blob(val content: NonEmptyString) : GitObject {
+data class GitBlob(val content: NonEmptyString) : GitObject {
     override fun toString() = content.toString()
 }
 
-data class Tree(val nodes: NonEmptyList<Node>) : GitObject {
+data class GitTree(val nodes: NonEmptyList<Node>) : GitObject {
     override fun toString() = nodes.joinToString("\n")
 
     data class Node(val permissionMetadataNumber: UInt, val fileHash: GitObjectHash, val fileName: NonEmptyString) {

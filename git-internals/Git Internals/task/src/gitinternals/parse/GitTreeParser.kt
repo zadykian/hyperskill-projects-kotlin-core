@@ -3,12 +3,12 @@ package gitinternals.parse
 import arrow.core.toNonEmptyListOrNull
 import gitinternals.*
 
-object GitTreeParser : GitObjectParser<Tree> {
+object GitTreeParser : GitObjectParser<GitTree> {
     private const val SPACE_CODE = '\u0020'.code.toByte()
     private const val NULL_CODE = 0.toByte()
 
     context(RaiseParsingFailed)
-    override fun parse(content: ByteArray): Tree {
+    override fun parse(content: ByteArray): GitTree {
         fun raise(text: String): Nothing = raise(Error.ParsingFailed(text))
         val iterator = content.iterator()
 
@@ -27,11 +27,11 @@ object GitTreeParser : GitObjectParser<Tree> {
             val fileHashBytes = iterator.asSequence().take(20).toList()
             val fileHash = GitObjectHash(fileHashBytes).bind()
 
-            Tree.Node(permissionMetadataNumber, fileHash, fileName)
+            GitTree.Node(permissionMetadataNumber, fileHash, fileName)
         }
 
         val nonEmptyNodes = nodes.toList().toNonEmptyListOrNull() ?: raise("Tree nodes cannot be empty")
-        return Tree(nonEmptyNodes)
+        return GitTree(nonEmptyNodes)
     }
 
     private fun Iterator<Byte>.takeWhile(predicate: (Byte) -> Boolean): List<Byte> =
