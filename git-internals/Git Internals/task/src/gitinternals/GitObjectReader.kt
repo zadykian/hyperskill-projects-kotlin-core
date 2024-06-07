@@ -23,7 +23,7 @@ object GitObjectReader {
             .resolve(gitObjectHash.toString().substring(2))
 
         this@RaiseFailedToReadGitObject.ensure(Files.exists(gitObjectPath)) {
-            Error.FailedToReadGitObject("Git object with specified hash does not exist on disk!")
+            Error.FailedToReadGitObject("Git object with hash '$gitObjectHash' does not exist on disk!")
         }
 
         return loadObject(gitObjectPath)

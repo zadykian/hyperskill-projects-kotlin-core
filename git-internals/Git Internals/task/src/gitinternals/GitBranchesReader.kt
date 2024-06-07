@@ -10,7 +10,7 @@ import kotlin.streams.asSequence
 
 typealias RaiseFailedToReadGitBranch = Raise<Error.FailedToReadGitBranch>
 
-data class GitBranch(val name: NonEmptyString, val commandHash: GitObjectHash)
+data class GitBranch(val name: NonEmptyString, val commitHash: GitObjectHash)
 
 class GitBranches private constructor(private val current: GitBranch, private val others: Set<GitBranch>) {
     override fun toString() =
