@@ -15,7 +15,10 @@ enum class Command {
     ListBranches,
 
     @CommandName("log")
-    Log;
+    Log,
+
+    @CommandName("commit-tree")
+    CommitTree;
 
     companion object {
         private val namesToCommands = entries.associateBy {

@@ -26,6 +26,7 @@ class Application(private val io: IO) {
             Command.CatFile -> runCatFile(gitRootDirectory)
             Command.ListBranches -> runListBranches(gitRootDirectory)
             Command.Log -> runLog(gitRootDirectory)
+            Command.CommitTree -> runCommitTree(gitRootDirectory)
         }
     }
 
@@ -60,6 +61,13 @@ class Application(private val io: IO) {
         }
     }
 
+    context(Raise<Error>)
+    private fun runCommitTree(gitRootDirectory: Path) {
+        io.write(Requests.GIT_COMMIT_HASH)
+        val input = io.read()
+        val commitHash = GitObjectHash(input).bind()
+    }
+
     context(Raise<Error.UnknownCommand>)
     private fun requestCommand(): Command {
         io.write(Requests.COMMAND)
@@ -83,6 +91,7 @@ class Application(private val io: IO) {
     private object Requests {
         const val COMMAND = "Enter command:"
         const val GIT_BRANCH_NAME = "Enter branch name:"
+        const val GIT_COMMIT_HASH = "Enter commit hash:"
         const val GIT_ROOT_DIRECTORY = "Enter .git directory location:"
         const val GIT_OBJECT_HASH = "Enter git object hash:"
     }
