@@ -31,8 +31,12 @@ class Application(private val io: IO) {
             }
 
             Command.ListBranches -> {
-                val gitBranches = GitBranchesReader.read(gitRoot)
+                val gitBranches = GitBranchesReader.readAll(gitRoot)
                 io.write(gitBranches.toString())
+            }
+
+            Command.Log -> {
+                TODO()
             }
         }
     }

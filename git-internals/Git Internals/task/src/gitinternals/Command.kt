@@ -12,7 +12,10 @@ enum class Command {
     CatFile,
 
     @CommandName("list-branches")
-    ListBranches;
+    ListBranches,
+
+    @CommandName("log")
+    Log;
 
     companion object {
         private val namesToCommands = entries.associateBy {

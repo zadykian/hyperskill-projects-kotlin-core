@@ -11,7 +11,7 @@ import kotlin.streams.asSequence
 typealias RaiseFailedToReadGitBranch = Raise<Error.FailedToReadGitBranch>
 typealias RaiseInvalidGitBranches = Raise<Error.InvalidGitBranches>
 
-data class GitBranch(val name: NonEmptyString)
+data class GitBranch(val name: NonEmptyString, val commandHash: GitObjectHash)
 
 class GitBranches private constructor(private val current: GitBranch, private val others: Set<GitBranch>) {
     override fun toString() =
@@ -35,15 +35,15 @@ class GitBranches private constructor(private val current: GitBranch, private va
 }
 
 object GitBranchesReader {
-    context(RaiseFailedToReadGitBranch, RaiseInvalidGitBranches)
-    fun read(gitRootDirectory: Path): GitBranches {
+    context(RaiseFailedToReadGitBranch, RaiseInvalidGitBranches, RaiseInvalidGitObjectHash)
+    fun readAll(gitRootDirectory: Path): GitBranches {
         fun raise(text: CharSequence): Nothing = raise(Error.FailedToReadGitBranch(text))
         val branchesDir = gitRootDirectory.resolve("refs").resolve("heads")
 
         val allBranches = try {
-            Files.list(branchesDir).asSequence().map { getBranchFromFile(it) }.toList()
+            Files.list(branchesDir).asSequence().map { read(it) }.toList()
         } catch (e: Exception) {
-            raise("Error during branches enumeration: ${e.localizedMessage}")
+            raise("Error occurred during branches enumeration: ${e.localizedMessage}")
         }
 
         val currentBranchName = getCurrentBranchName(gitRootDirectory)
@@ -53,11 +53,19 @@ object GitBranchesReader {
         return GitBranches(currentBranch, others).bind()
     }
 
-    context(Raise<Error.InvalidGitBranches>)
-    private fun getBranchFromFile(branchFile: Path): GitBranch {
+    context(RaiseFailedToReadGitBranch, RaiseInvalidGitBranches, RaiseInvalidGitObjectHash)
+    fun read(branchFile: Path): GitBranch {
         val fileName = branchFile.fileName.toString().toNonEmptyStringOrNull()
             ?: raise(Error.InvalidGitBranches("Branch file name '$branchFile' is invalid'"))
-        return GitBranch(fileName)
+
+        val commitHashString = try {
+            Files.readString(branchFile).trim()
+        } catch (e: Exception) {
+            raise(Error.FailedToReadGitBranch("Error occurred during branch file reading: '${e.localizedMessage}'"))
+        }
+
+        val commitHash = GitObjectHash(commitHashString).bind()
+        return GitBranch(fileName, commitHash)
     }
 
     context(RaiseFailedToReadGitBranch)
