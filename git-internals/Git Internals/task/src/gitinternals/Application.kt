@@ -19,15 +19,21 @@ class Application(private val io: IO) {
     }
 
     context(Raise<Error>)
-    private fun executeCommand() = when (requestCommand()) {
-        Command.CatFile -> {
-            val gitObject = readGitObject()
-            io.write("*${gitObject::class.simpleName!!.uppercase()}*")
-            io.write(gitObject.toString())
-        }
+    private fun executeCommand() {
+        val gitRoot = requestGitRootDirectory()
+        val command = requestCommand()
+        when (command) {
+            Command.CatFile -> {
+                val gitObjectHash = requestGitObjectHash()
+                val gitObject = GitObjectReader.read(gitRoot, gitObjectHash)
+                io.write("*${gitObject::class.simpleName!!.uppercase()}*")
+                io.write(gitObject.toString())
+            }
 
-        Command.ListBranches -> {
-            TODO()
+            Command.ListBranches -> {
+                val gitBranches = GitBranchesReader.read(gitRoot)
+                io.write(gitBranches.toString())
+            }
         }
     }
 
@@ -38,15 +44,8 @@ class Application(private val io: IO) {
         return Command.byName(input).bind()
     }
 
-    context(Raise<Error>)
-    private fun readGitObject(): GitObject {
-        val gitRoot = getGitRootDirectory()
-        val gitObjectHash = getGitObjectHash()
-        return GitObjectReader.read(gitRoot, gitObjectHash)
-    }
-
     context(RaiseDirectoryNotFound, RaiseInvalidDirectoryPath)
-    private fun getGitRootDirectory(): Path {
+    private fun requestGitRootDirectory(): Path {
         io.write(Requests.GIT_ROOT_DIRECTORY)
         val pathString = io.read()
         val path = try {
@@ -59,7 +58,7 @@ class Application(private val io: IO) {
     }
 
     context(RaiseInvalidGitObjectHash)
-    private fun getGitObjectHash(): GitObjectHash {
+    private fun requestGitObjectHash(): GitObjectHash {
         io.write(Requests.GIT_OBJECT_HASH)
         val objectHashString = io.read()
         return GitObjectHash(objectHashString).bind()

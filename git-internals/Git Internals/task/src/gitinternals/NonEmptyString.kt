@@ -1,10 +1,14 @@
 package gitinternals
 
 @JvmInline
-value class NonEmptyString private constructor(private val value: String) : CharSequence by value {
+value class NonEmptyString private constructor(private val value: String) :
+    CharSequence by value,
+    Comparable<NonEmptyString> {
     init {
         require(value.isNotBlank()) { "Value cannot be blank" }
     }
+
+    override fun compareTo(other: NonEmptyString) = value.compareTo(other.value)
 
     override fun toString() = value
 
@@ -16,5 +20,3 @@ value class NonEmptyString private constructor(private val value: String) : Char
 }
 
 fun String.toNonEmptyStringOrNull() = NonEmptyString(this)
-
-fun Sequence<Char>.toNonEmptyStringOrNull() = NonEmptyString(this.joinToString(separator = ""))
