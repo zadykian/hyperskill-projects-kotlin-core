@@ -36,7 +36,7 @@ class Application(private val io: IO) {
         val gitObjectHash = GitObjectHash(objectHashString).bind()
 
         val gitObject = GitObjectReader.read(gitRootDirectory, gitObjectHash)
-        io.write("*${gitObject::class.simpleName!!.uppercase()}*")
+        io.write("*${gitObject::class.simpleName!!.replace("Git", "").uppercase()}*")
         io.write(gitObject.toString())
     }
 
