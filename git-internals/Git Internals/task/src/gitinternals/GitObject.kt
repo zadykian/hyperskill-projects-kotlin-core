@@ -62,7 +62,7 @@ data class GitBlob(val content: NonEmptyString) : GitObject {
 data class GitTree(val nodes: NonEmptyList<Node>) : GitObject {
     override fun toString() = nodes.joinToString("\n")
 
-    data class Node(val permissionMetadataNumber: UInt, val fileHash: GitObjectHash, val fileName: NonEmptyString) {
-        override fun toString() = "$permissionMetadataNumber $fileHash $fileName"
+    data class Node(val permissionMetadataNumber: UInt, val objectHash: GitObjectHash, val name: NonEmptyString) {
+        override fun toString() = "$permissionMetadataNumber $objectHash $name"
     }
 }

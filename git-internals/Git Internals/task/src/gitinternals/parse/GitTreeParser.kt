@@ -21,13 +21,12 @@ object GitTreeParser : GitObjectParser<GitTree> {
                 it.toUIntOrNull() ?: raise("Invalid permission metadata number '$it'")
             }
 
-            val fileName = iterator.takeWhile { it != NULL_CODE }.toStringUtf8().toNonEmptyStringOrNull()
-                ?: raise("File name cannot be empty")
+            val objectName = iterator.takeWhile { it != NULL_CODE }.toStringUtf8().toNonEmptyStringOrNull()
+                ?: raise("Object name cannot be empty")
 
-            val fileHashBytes = iterator.asSequence().take(20).toList()
-            val fileHash = GitObjectHash(fileHashBytes).bind()
-
-            GitTree.Node(permissionMetadataNumber, fileHash, fileName)
+            val objectHashBytes = iterator.asSequence().take(20).toList()
+            val objectHash = GitObjectHash(objectHashBytes).bind()
+            GitTree.Node(permissionMetadataNumber, objectHash, objectName)
         }
 
         val nonEmptyNodes = nodes.toList().toNonEmptyListOrNull() ?: raise("Tree nodes cannot be empty")
