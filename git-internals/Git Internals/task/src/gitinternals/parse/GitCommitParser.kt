@@ -1,11 +1,7 @@
 package gitinternals.parse
 
-import arrow.core.NonEmptyList
 import arrow.core.raise.ensure
-import gitinternals.Commit
-import gitinternals.Error
-import gitinternals.GitObjectHash
-import gitinternals.UserData
+import gitinternals.*
 import java.time.Instant
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
@@ -14,15 +10,18 @@ private typealias LineTokens = List<String>
 
 object GitCommitParser : GitObjectParser<Commit> {
     context(RaiseParsingFailed)
-    override fun parse(lines: NonEmptyList<String>): Commit {
-        val keyedLines = getKeyedLines(lines)
+    override fun parse(content: NonEmptyString): Commit {
+        val contentLines = content.split("\n")
+        val keyedLines = getKeyedLines(contentLines)
         fun get(key: String) = keyedLines[key] ?: emptyList()
 
         val tree = GitObjectHash(get("tree").first().first()).bind()
         val parents = get("parent").take(2).map { GitObjectHash(it.first()) }.bindAll()
         val (author, createdAt) = userAndDate(get("author"))
         val (committer, committedAt) = userAndDate(get("committer"))
-        val message = lines.drop(parents.size + 3).joinToString("\n")
+
+        val message = contentLines.drop(parents.size + 3).joinToString("\n").toNonEmptyStringOrNull()
+            ?: raise(Error.ParsingFailed("Commit message cannot be empty"))
 
         return Commit(
             tree = tree,
@@ -41,8 +40,14 @@ object GitCommitParser : GitObjectParser<Commit> {
             Error.ParsingFailed("Unexpected line tokens: [${lineTokens.joinToString()}]")
         }
         val (name, email, timestamp, timezone) = lineTokens.first()
+
+        val nameValue = name.toNonEmptyStringOrNull()
+            ?: raise(Error.ParsingFailed("User's name cannot be empty"))
+        val emailValue = email.trim('<', '>').toNonEmptyStringOrNull()
+            ?: raise(Error.ParsingFailed("Email cannot be empty"))
+
         return try {
-            val user = UserData(name, email.trimStart('<').trimEnd('>'))
+            val user = UserData(nameValue, emailValue)
             val unixEpoch = timestamp.toLongOrNull() ?: raise(Error.ParsingFailed("Invalid timestamp '$timestamp'"))
             val dateTime = Instant.ofEpochSecond(unixEpoch).atZone(ZoneOffset.of(timezone))
             Pair(user, dateTime)

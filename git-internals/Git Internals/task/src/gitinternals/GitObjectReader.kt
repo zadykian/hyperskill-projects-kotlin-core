@@ -1,9 +1,7 @@
 package gitinternals
 
-import arrow.core.NonEmptyList
 import arrow.core.raise.Raise
 import arrow.core.raise.ensure
-import arrow.core.toNonEmptyListOrNull
 import gitinternals.parse.GitBlobParser
 import gitinternals.parse.GitCommitParser
 import gitinternals.parse.GitTreeParser
@@ -14,7 +12,7 @@ import java.util.zip.InflaterInputStream
 
 typealias RaiseFailedToReadGitObject = Raise<Error.FailedToReadGitObject>
 
-private data class GitObjectFile(val header: String, val contentLines: NonEmptyList<String>)
+private data class GitObjectFile(val header: NonEmptyString, val content: NonEmptyString)
 
 object GitObjectReader {
     context(RaiseFailedToReadGitObject, RaiseParsingFailed)
@@ -33,17 +31,17 @@ object GitObjectReader {
 
     context(RaiseFailedToReadGitObject, RaiseParsingFailed)
     private fun loadObject(gitObjectPath: Path): GitObject {
-        val (header, contentLines) = try {
+        val (header, content) = try {
             readFile(gitObjectPath)
         } catch (exception: Exception) {
             raise(Error.FailedToReadGitObject(exception.localizedMessage))
         }
 
-        this@RaiseFailedToReadGitObject.ensure(contentLines.isNotEmpty()) {
+        this@RaiseFailedToReadGitObject.ensure(content.isNotEmpty()) {
             Error.FailedToReadGitObject("Git object file is empty")
         }
 
-        val fileType = header.takeWhile { !it.isWhitespace() }.lowercase()
+        val fileType = header.takeWhile { !it.isWhitespace() }.toString().lowercase()
 
         val parser = when (fileType) {
             "blob" -> GitBlobParser
@@ -52,7 +50,7 @@ object GitObjectReader {
             else -> raise(Error.UnknownGitObjectType(header))
         }
 
-        return parser.parse(contentLines)
+        return parser.parse(content)
     }
 
     context(RaiseFailedToReadGitObject)
@@ -62,9 +60,11 @@ object GitObjectReader {
             .let { InflaterInputStream(it) }
             .bufferedReader()
             .use {
-                val header = it.readWhile { char -> char != '\u0000' }.joinToString(separator = "")
-                val contentLines = it.readLines().toNonEmptyListOrNull()
+                val header = it.readWhile { char -> char != '\u0000' }.toNonEmptyStringOrNull()
+                    ?: raise(Error.FailedToReadGitObject("File header is not expected to be empty"))
+                val content = it.readText().toNonEmptyStringOrNull()
                     ?: raise(Error.FailedToReadGitObject("File content is not expected to be empty"))
-                GitObjectFile(header, contentLines)
+                GitObjectFile(header, content)
             }
 }
+

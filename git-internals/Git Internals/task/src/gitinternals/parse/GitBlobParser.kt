@@ -1,9 +1,9 @@
 package gitinternals.parse
 
-import arrow.core.NonEmptyList
 import gitinternals.Blob
+import gitinternals.NonEmptyString
 
 object GitBlobParser : GitObjectParser<Blob> {
     context(RaiseParsingFailed)
-    override fun parse(lines: NonEmptyList<String>): Blob = Blob(lines.joinToString("\n"))
+    override fun parse(content: NonEmptyString): Blob = Blob(content)
 }

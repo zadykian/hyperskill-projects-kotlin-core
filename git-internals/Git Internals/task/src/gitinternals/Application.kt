@@ -20,7 +20,7 @@ class Application(private val io: IO) {
                 io.write("*${it::class.simpleName!!.uppercase()}*")
                 io.write(it.toString())
             }
-            .onLeft { io.write(it.displayText) }
+            .onLeft { io.write(it.displayText.toString()) }
     }
 
     private fun readGitObject() = either {

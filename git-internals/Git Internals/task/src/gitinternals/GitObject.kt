@@ -7,7 +7,7 @@ import arrow.core.right
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
-data class UserData(val name: String, val email: String) {
+data class UserData(val name: NonEmptyString, val email: NonEmptyString) {
     override fun toString() = "$name $email"
 }
 
@@ -34,7 +34,7 @@ data class Commit(
     val createdAt: ZonedDateTime,
     val committer: UserData,
     val committedAt: ZonedDateTime,
-    val message: String,
+    val message: NonEmptyString,
 ) : GitObject {
     override fun toString() = buildString {
         fun <T> appendLine(vararg values: T) = append(*values).append("\n")
@@ -52,14 +52,14 @@ data class Commit(
     }
 }
 
-data class Blob(val content: String) : GitObject {
-    override fun toString() = content
+data class Blob(val content: NonEmptyString) : GitObject {
+    override fun toString() = content.toString()
 }
 
 data class Tree(val nodes: NonEmptyList<Node>) : GitObject {
     override fun toString() = nodes.joinToString("\n")
 
-    data class Node(val permissionMetadataNumber: UInt, val fileHash: GitObjectHash, val fileName: String) {
+    data class Node(val permissionMetadataNumber: UInt, val fileHash: GitObjectHash, val fileName: NonEmptyString) {
         override fun toString() = "$permissionMetadataNumber $fileHash $fileName"
     }
 }
