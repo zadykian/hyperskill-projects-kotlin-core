@@ -1,6 +1,7 @@
 package gitinternals
 
 sealed class Error(val displayText: CharSequence) {
+    data object UnknownCommand : Error("Unknown command")
     data object InvalidDirectoryPath : Error("Specified path is invalid!")
     data object DirectoryNotFound : Error("Specified directory does not exist!")
 

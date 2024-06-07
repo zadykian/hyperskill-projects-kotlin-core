@@ -15,18 +15,34 @@ typealias RaiseInvalidGitObjectHash = Raise<Error.InvalidGitObjectHash>
 
 class Application(private val io: IO) {
     fun run() {
-        readGitObject()
-            .onRight {
-                io.write("*${it::class.simpleName!!.uppercase()}*")
-                io.write(it.toString())
-            }
-            .onLeft { io.write(it.displayText.toString()) }
+        either { executeCommand() }.onLeft { io.write(it.displayText.toString()) }
     }
 
-    private fun readGitObject() = either {
+    context(Raise<Error>)
+    private fun executeCommand() = when (requestCommand()) {
+        Command.CatFile -> {
+            val gitObject = readGitObject()
+            io.write("*${gitObject::class.simpleName!!.uppercase()}*")
+            io.write(gitObject.toString())
+        }
+
+        Command.ListBranches -> {
+            TODO()
+        }
+    }
+
+    context(Raise<Error.UnknownCommand>)
+    private fun requestCommand(): Command {
+        io.write(Requests.COMMAND)
+        val input = io.read()
+        return Command.byName(input).bind()
+    }
+
+    context(Raise<Error>)
+    private fun readGitObject(): GitObject {
         val gitRoot = getGitRootDirectory()
         val gitObjectHash = getGitObjectHash()
-        GitObjectReader.read(gitRoot, gitObjectHash)
+        return GitObjectReader.read(gitRoot, gitObjectHash)
     }
 
     context(RaiseDirectoryNotFound, RaiseInvalidDirectoryPath)
@@ -50,6 +66,7 @@ class Application(private val io: IO) {
     }
 
     private object Requests {
+        const val COMMAND = "Enter command:"
         const val GIT_ROOT_DIRECTORY = "Enter .git directory location:"
         const val GIT_OBJECT_HASH = "Enter git object hash:"
     }
