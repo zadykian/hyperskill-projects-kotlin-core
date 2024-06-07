@@ -76,5 +76,3 @@ object GitObjectReader {
             }
 }
 
-fun List<Byte>.toStringUtf8(): String = String(this.toByteArray(), Charsets.UTF_8)
-fun ByteArray.toStringUtf8(): String = String(this, Charsets.UTF_8)

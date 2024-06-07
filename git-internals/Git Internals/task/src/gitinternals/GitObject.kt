@@ -5,7 +5,6 @@ import arrow.core.NonEmptyList
 import arrow.core.left
 import arrow.core.right
 import java.time.ZonedDateTime
-import java.time.format.DateTimeFormatter
 
 data class UserData(val name: NonEmptyString, val email: NonEmptyString) {
     override fun toString() = "$name $email"
@@ -46,7 +45,6 @@ data class GitCommit(
     val message: NonEmptyString,
 ) : GitObject {
     override fun toString() = buildString {
-        fun <T> appendLine(vararg values: T) = append(*values).append("\n")
         appendLine("tree: ", tree)
         if (parents.isNotEmpty()) {
             appendLine("parents: ", parents.joinToString(separator = " | "))
@@ -54,14 +52,6 @@ data class GitCommit(
         appendLine("author: ", author, " original timestamp: ", dateTimeFormatter.format(createdAt))
         appendLine("committer: ", committer, " commit timestamp: ", dateTimeFormatter.format(committedAt))
         append("commit message:", message)
-    }
-
-    fun toStringCompact(): String {
-        TODO()
-    }
-
-    companion object {
-        private val dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss xxx")
     }
 }
 

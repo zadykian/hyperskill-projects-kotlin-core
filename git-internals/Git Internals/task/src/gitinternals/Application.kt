@@ -52,11 +52,11 @@ class Application(private val io: IO) {
         val branchName = io.read().toNonEmptyStringOrNull() ?: raise(Error.InvalidInput("Branch name cannot be empty"))
 
         val branch = GitBranchesReader.read(gitRootDirectory, branchName)
-        val gitLog = GitLogReader.read(gitRootDirectory, branch)
+        val gitLogEntries = GitLogReader.read(gitRootDirectory, branch)
 
-        gitLog.forEachIndexed { index, commit ->
+        gitLogEntries.forEachIndexed { index, logEntry ->
             if (index > 0) io.write("")
-            io.write(commit.toStringCompact())
+            io.write(logEntry.toString())
         }
     }
 
