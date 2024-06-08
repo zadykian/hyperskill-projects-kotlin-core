@@ -20,8 +20,8 @@ public class ContactsTest extends StageTest<TestClue> {
     @Override
     public List<TestCase<TestClue>> generate() {
         return List.of(
-            new TestCase<TestClue>()
-                .setInput("John\nSmith\n1-234-567-890")
+                new TestCase<TestClue>()
+                        .setInput("John\nSmith\n1-234-567-890")
         );
     }
 
@@ -29,22 +29,22 @@ public class ContactsTest extends StageTest<TestClue> {
     public CheckResult check(String reply, TestClue clue) {
         reply = reply.toLowerCase();
         if (!reply.contains("enter the name")
-            && !reply.contains("enter a name")) {
+                && !reply.contains("enter a name")) {
 
             return new CheckResult(false,
-                "I don't see a place to enter the name.");
+                    "I don't see a place to enter the name.");
         }
         if (!reply.contains("enter the surname")
-            && !reply.contains("enter a surname")) {
+                && !reply.contains("enter a surname")) {
 
             return new CheckResult(false,
-                "I don't see a place to enter the surname.");
+                    "I don't see a place to enter the surname.");
         }
         if (!reply.contains("enter the number")
-            && !reply.contains("enter a number")) {
+                && !reply.contains("enter a number")) {
 
             return new CheckResult(false,
-                "I don't see a place to enter the number.");
+                    "I don't see a place to enter the number.");
         }
         return CheckResult.correct();
     }

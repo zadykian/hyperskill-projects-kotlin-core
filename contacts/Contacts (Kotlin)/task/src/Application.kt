@@ -30,7 +30,7 @@ class Application(private val io: IO) {
         val surname = io.read().toNonEmptyOrNull() ?: raise(Error.InvalidInput("Surname cannot be empty"))
 
         io.write(Requests.PHONE_NUMBER)
-        val phoneNumber = io.read().toNonEmptyOrNull() ?: raise(Error.InvalidInput("Phone number cannot be empty"))
+        val phoneNumber = PhoneNumber(io.read()).onLeft { io.write(it.displayText.toString()) }.getOrNull()
 
         return Record(name, surname, phoneNumber)
     }
