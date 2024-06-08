@@ -20,10 +20,10 @@ class GitBranches private constructor(private val current: GitBranch, private va
         operator fun invoke(
             current: GitBranch,
             others: List<GitBranch>
-        ): Either<Error.InvalidGitBranches, GitBranches> {
+        ): Either<Error.FailedToReadGitBranch, GitBranches> {
             val othersSet = others.toSet()
             return if (current in othersSet)
-                Error.InvalidGitBranches("Current branch should not belong to the set of others").left()
+                Error.FailedToReadGitBranch("Current branch should not belong to the set of others").left()
             else GitBranches(current, othersSet).right()
         }
     }

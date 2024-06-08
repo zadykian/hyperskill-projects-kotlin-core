@@ -1,9 +1,8 @@
 package gitinternals.readers
 
-import arrow.core.raise.Raise
 import gitinternals.Error
 import gitinternals.NonEmptyString
-import gitinternals.RaiseInvalidGitObjectHash
+import gitinternals.RaiseFailedToReadGitBranch
 import gitinternals.objects.GitBranch
 import gitinternals.objects.GitBranches
 import gitinternals.objects.GitObjectHash
@@ -12,10 +11,8 @@ import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.streams.asSequence
 
-typealias RaiseFailedToReadGitBranch = Raise<Error.FailedToReadGitBranch>
-
 object GitBranchesReader {
-    context(RaiseFailedToReadGitBranch, RaiseInvalidGitObjectHash)
+    context(RaiseFailedToReadGitBranch)
     fun readAll(gitRootDirectory: Path): GitBranches {
         val allBranches = readAllBranchesFromDisk(gitRootDirectory)
         val currentBranchName = getCurrentBranchName(gitRootDirectory)
@@ -25,12 +22,12 @@ object GitBranchesReader {
         return GitBranches(currentBranch, others).bind()
     }
 
-    context(RaiseFailedToReadGitBranch, RaiseInvalidGitObjectHash)
+    context(RaiseFailedToReadGitBranch)
     fun read(gitRootDirectory: Path, branchName: NonEmptyString) =
         readAllBranchesFromDisk(gitRootDirectory).firstOrNull { it.name == branchName }
-            ?: raise(Error.GitBranchNotFound)
+            ?: raise(Error.FailedToReadGitBranch("Git branch is not found"))
 
-    context(RaiseFailedToReadGitBranch, RaiseInvalidGitObjectHash)
+    context(RaiseFailedToReadGitBranch)
     private fun readAllBranchesFromDisk(gitRootDirectory: Path): List<GitBranch> {
         val branchesDir = gitRootDirectory.resolve("refs").resolve("heads")
         return try {
@@ -40,10 +37,10 @@ object GitBranchesReader {
         }
     }
 
-    context(RaiseFailedToReadGitBranch, RaiseInvalidGitObjectHash)
+    context(RaiseFailedToReadGitBranch)
     private fun readBranchFromDisk(branchFile: Path): GitBranch {
         val fileName = branchFile.fileName.toString().toNonEmptyStringOrNull()
-            ?: raise(Error.InvalidGitBranches("Branch file name '$branchFile' is invalid'"))
+            ?: raise(Error.FailedToReadGitBranch("Branch file name '$branchFile' is invalid'"))
 
         val commitHashString = try {
             Files.readString(branchFile).trim()
@@ -51,7 +48,8 @@ object GitBranchesReader {
             raise(Error.FailedToReadGitBranch("Error occurred during branch file reading: '${e.localizedMessage}'"))
         }
 
-        val commitHash = GitObjectHash(commitHashString).bind()
+        val commitHash = GitObjectHash.fromStringOrNull(commitHashString)
+            ?: raise(Error.FailedToReadGitBranch("Branch file name '$branchFile' contains invalid commit hash"))
         return GitBranch(fileName, commitHash)
     }
 

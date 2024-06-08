@@ -1,6 +1,5 @@
 package gitinternals
 
-import arrow.core.raise.Raise
 import arrow.core.raise.either
 import arrow.core.raise.ensure
 import gitinternals.objects.GitObjectHash
@@ -13,16 +12,12 @@ import java.nio.file.Paths
 
 data class IO(val read: () -> String, val write: (String) -> Unit)
 
-typealias RaiseDirectoryNotFound = Raise<Error.DirectoryNotFound>
-typealias RaiseInvalidDirectoryPath = Raise<Error.InvalidDirectoryPath>
-typealias RaiseInvalidGitObjectHash = Raise<Error.InvalidGitObjectHash>
-
 class Application(private val io: IO) {
     fun run() {
         either { executeCommand() }.onLeft { io.write(it.displayText.toString()) }
     }
 
-    context(Raise<Error>)
+    context(RaiseAnyError)
     private fun executeCommand() {
         val gitRootDirectory = requestGitRootDirectory()
         val command = requestCommand()
@@ -34,24 +29,21 @@ class Application(private val io: IO) {
         }
     }
 
-    context(Raise<Error>)
+    context(RaiseAnyError)
     private fun runCatFile(gitRootDirectory: Path) {
-        io.write(Requests.GIT_OBJECT_HASH)
-        val objectHashString = io.read()
-        val gitObjectHash = GitObjectHash(objectHashString).bind()
-
+        val gitObjectHash = requestGitObjectHash(Requests.GIT_OBJECT_HASH)
         val gitObject = GitObjectReader.read(gitRootDirectory, gitObjectHash)
         io.write("*${gitObject::class.simpleName!!.replace("Git", "").uppercase()}*")
         io.write(gitObject.toString())
     }
 
-    context(Raise<Error>)
+    context(RaiseFailedToReadGitBranch)
     private fun runListBranches(gitRootDirectory: Path) {
         val gitBranches = GitBranchesReader.readAll(gitRootDirectory)
         io.write(gitBranches.toString())
     }
 
-    context(Raise<Error>)
+    context(RaiseAnyError)
     private fun runLog(gitRootDirectory: Path) {
         io.write(Requests.GIT_BRANCH_NAME)
         val branchName = io.read().toNonEmptyStringOrNull() ?: raise(Error.InvalidInput("Branch name cannot be empty"))
@@ -65,30 +57,38 @@ class Application(private val io: IO) {
         }
     }
 
-    context(Raise<Error>)
+    context(RaiseAnyError)
     private fun runCommitTree(gitRootDirectory: Path) {
-        io.write(Requests.GIT_COMMIT_HASH)
-        val input = io.read()
-        val commitHash = GitObjectHash(input).bind()
+        val commitHash = requestGitObjectHash(Requests.GIT_COMMIT_HASH)
+        TODO()
     }
 
-    context(Raise<Error.UnknownCommand>)
+    context(RaiseInvalidInput)
+    private fun requestGitObjectHash(request: String): GitObjectHash {
+        io.write(request)
+        val input = io.read()
+        return GitObjectHash.fromStringOrNull(input) ?: raise(Error.InvalidInput("Invalid git object hash"))
+    }
+
+    context(RaiseInvalidInput)
     private fun requestCommand(): Command {
         io.write(Requests.COMMAND)
-        val input = io.read()
-        return Command.byName(input).bind()
+        val commandString = io.read()
+        return Command.getByNameOrNull(commandString) ?: raise(Error.InvalidInput("Unknown command '$commandString'"))
     }
 
-    context(RaiseDirectoryNotFound, RaiseInvalidDirectoryPath)
+    context(RaiseInvalidInput)
     private fun requestGitRootDirectory(): Path {
         io.write(Requests.GIT_ROOT_DIRECTORY)
         val pathString = io.read()
+
         val path = try {
             Paths.get(pathString)
         } catch (exception: Exception) {
-            raise(Error.InvalidDirectoryPath)
+            raise(Error.InvalidInput("Specified path '$pathString' is invalid"))
         }
-        this@RaiseDirectoryNotFound.ensure(Files.exists(path)) { Error.DirectoryNotFound }
+
+        ensure(Files.exists(path)) { Error.InvalidInput("Specified directory '$pathString' does not exist") }
         return path
     }
 

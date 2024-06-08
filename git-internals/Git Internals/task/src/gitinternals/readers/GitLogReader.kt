@@ -1,29 +1,17 @@
 package gitinternals.readers
 
-import arrow.core.raise.Raise
 import gitinternals.Error
-import gitinternals.appendLine
-import gitinternals.dateTimeFormatter
+import gitinternals.RaiseDeserializationFailed
+import gitinternals.RaiseFailedToReadGitObject
 import gitinternals.objects.GitBranch
 import gitinternals.objects.GitCommit
+import gitinternals.objects.GitLogEntry
 import gitinternals.objects.GitObjectHash
 import java.nio.file.Path
 
-data class GitLogEntry(
-    val commitHash: GitObjectHash,
-    val commit: GitCommit,
-    val wasMerged: Boolean
-) {
-    override fun toString() = buildString {
-        appendLine("Commit: ", commitHash, if (wasMerged) " (merged)" else "")
-        appendLine(commit.committer, " commit timestamp: ", dateTimeFormatter.format(commit.committedAt))
-        append(commit.message.trim())
-    }
-}
-
 object GitLogReader {
-    context(Raise<Error>)
-    fun read(gitRootDirectory: Path, branch: GitBranch) = sequence<GitLogEntry> {
+    context(RaiseFailedToReadGitObject, RaiseDeserializationFailed)
+    fun read(gitRootDirectory: Path, branch: GitBranch) = sequence {
         fun getCommit(commitHash: GitObjectHash): GitCommit {
             val gitObject = GitObjectReader.read(gitRootDirectory, commitHash)
             return if (gitObject is GitCommit) gitObject

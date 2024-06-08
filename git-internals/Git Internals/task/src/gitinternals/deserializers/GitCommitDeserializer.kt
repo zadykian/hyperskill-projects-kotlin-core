@@ -2,6 +2,7 @@ package gitinternals.deserializers
 
 import arrow.core.raise.ensure
 import gitinternals.Error
+import gitinternals.RaiseDeserializationFailed
 import gitinternals.objects.GitCommit
 import gitinternals.objects.GitObjectHash
 import gitinternals.toNonEmptyStringOrNull
@@ -19,13 +20,20 @@ object GitCommitDeserializer : GitObjectDeserializer<GitCommit> {
         val keyedLines = getKeyedLines(contentLines)
         fun get(key: String) = keyedLines[key] ?: emptyList()
 
-        val tree = GitObjectHash(get("tree").first().first()).bind()
-        val parents = get("parent").take(2).map { GitObjectHash(it.first()) }.bindAll()
+        val tree = GitObjectHash.fromStringOrNull(get("tree").first().first())
+            ?: raise(Error.DeserializationFailed("Commit contains invalid tree hash"))
+
+        val parents = get("parent")
+            .map {
+                GitObjectHash.fromStringOrNull(it.first())
+                    ?: raise(Error.DeserializationFailed("Commit contains invalid parent hash"))
+            }
+
         val (author, createdAt) = userAndDate(get("author"))
         val (committer, committedAt) = userAndDate(get("committer"))
 
         val message = contentLines.drop(parents.size + 3).joinToString("\n").toNonEmptyStringOrNull()
-            ?: raise(Error.ParsingFailed("Commit message cannot be empty"))
+            ?: raise(Error.DeserializationFailed("Commit message cannot be empty"))
 
         return GitCommit(
             tree = tree,
@@ -41,22 +49,23 @@ object GitCommitDeserializer : GitObjectDeserializer<GitCommit> {
     context(RaiseDeserializationFailed)
     private fun userAndDate(lineTokens: List<LineTokens>): Pair<GitCommit.UserData, ZonedDateTime> {
         ensure(lineTokens.isNotEmpty() && lineTokens.first().size == 4) {
-            Error.ParsingFailed("Unexpected line tokens: [${lineTokens.joinToString()}]")
+            Error.DeserializationFailed("Unexpected line tokens: [${lineTokens.joinToString()}]")
         }
         val (name, email, timestamp, timezone) = lineTokens.first()
 
         val nameValue = name.toNonEmptyStringOrNull()
-            ?: raise(Error.ParsingFailed("User's name cannot be empty"))
+            ?: raise(Error.DeserializationFailed("User's name cannot be empty"))
         val emailValue = email.trim('<', '>').toNonEmptyStringOrNull()
-            ?: raise(Error.ParsingFailed("Email cannot be empty"))
+            ?: raise(Error.DeserializationFailed("Email cannot be empty"))
 
         return try {
             val user = GitCommit.UserData(nameValue, emailValue)
-            val unixEpoch = timestamp.toLongOrNull() ?: raise(Error.ParsingFailed("Invalid timestamp '$timestamp'"))
+            val unixEpoch =
+                timestamp.toLongOrNull() ?: raise(Error.DeserializationFailed("Invalid timestamp '$timestamp'"))
             val dateTime = Instant.ofEpochSecond(unixEpoch).atZone(ZoneOffset.of(timezone))
             Pair(user, dateTime)
         } catch (e: Exception) {
-            raise(Error.ParsingFailed("Failed to parse UserData and ZonedDateTime (${e.localizedMessage})"))
+            raise(Error.DeserializationFailed("Failed to parse UserData and ZonedDateTime (${e.localizedMessage})"))
         }
     }
 
@@ -67,7 +76,7 @@ object GitCommitDeserializer : GitObjectDeserializer<GitCommit> {
             .mapIndexed { index, line -> Pair(index, line.split(' ').map(String::trim)) }
             .groupBy {
                 ensure(it.second.size >= 2) {
-                    Error.ParsingFailed("Line ${it.first} has unexpected content: ${lines[it.first]}")
+                    Error.DeserializationFailed("Line ${it.first} has unexpected content: ${lines[it.first]}")
                 }
                 it.second.first()
             }

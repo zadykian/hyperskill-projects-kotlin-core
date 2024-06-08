@@ -1,24 +1,15 @@
 package gitinternals.readers
 
-import arrow.core.raise.Raise
 import arrow.core.raise.ensure
-import gitinternals.Error
-import gitinternals.NonEmptyString
+import gitinternals.*
 import gitinternals.deserializers.GitBlobDeserializer
 import gitinternals.deserializers.GitCommitDeserializer
 import gitinternals.deserializers.GitTreeViewDeserializer
-import gitinternals.deserializers.RaiseDeserializationFailed
 import gitinternals.objects.GitObject
 import gitinternals.objects.GitObjectHash
-import gitinternals.toNonEmptyStringOrNull
-import gitinternals.toStringUtf8
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.zip.InflaterInputStream
-
-typealias RaiseFailedToReadGitObject = Raise<Error.FailedToReadGitObject>
-
-private class GitObjectFile(val header: NonEmptyString, val content: ByteArray)
 
 object GitObjectReader {
     context(RaiseFailedToReadGitObject, RaiseDeserializationFailed)
@@ -53,7 +44,7 @@ object GitObjectReader {
             "blob" -> GitBlobDeserializer
             "commit" -> GitCommitDeserializer
             "tree" -> GitTreeViewDeserializer
-            else -> raise(Error.UnknownGitObjectType(file.header))
+            else -> raise(Error.FailedToReadGitObject("Unknown git object type '$fileType'"))
         }
 
         return deserializer.deserialize(file.content)
@@ -80,4 +71,6 @@ object GitObjectReader {
 
                 GitObjectFile(header, content)
             }
+
+    private class GitObjectFile(val header: NonEmptyString, val content: ByteArray)
 }

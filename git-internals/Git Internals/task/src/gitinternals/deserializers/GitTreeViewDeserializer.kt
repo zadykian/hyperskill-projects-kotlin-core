@@ -2,6 +2,7 @@ package gitinternals.deserializers
 
 import arrow.core.toNonEmptyListOrNull
 import gitinternals.Error
+import gitinternals.RaiseDeserializationFailed
 import gitinternals.objects.GitObjectHash
 import gitinternals.objects.GitTreeView
 import gitinternals.toNonEmptyStringOrNull
@@ -13,7 +14,7 @@ object GitTreeViewDeserializer : GitObjectDeserializer<GitTreeView> {
 
     context(RaiseDeserializationFailed)
     override fun deserialize(content: ByteArray): GitTreeView {
-        fun raise(text: String): Nothing = raise(Error.ParsingFailed(text))
+        fun raise(text: String): Nothing = raise(Error.DeserializationFailed(text))
         val iterator = content.iterator()
 
         val nodes = generateSequence {
@@ -29,7 +30,7 @@ object GitTreeViewDeserializer : GitObjectDeserializer<GitTreeView> {
                 ?: raise("Object name cannot be empty")
 
             val objectHashBytes = iterator.asSequence().take(20).toList()
-            val objectHash = GitObjectHash(objectHashBytes).bind()
+            val objectHash = GitObjectHash.fromBytesOrNull(objectHashBytes) ?: raise("Tree contains invalid child hash")
             GitTreeView.NodeView(permissionMetadataNumber, objectHash, objectName)
         }
 

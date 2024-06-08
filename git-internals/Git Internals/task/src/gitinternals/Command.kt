@@ -1,9 +1,5 @@
 package gitinternals
 
-import arrow.core.Either
-import arrow.core.left
-import arrow.core.right
-
 @Target(AnnotationTarget.FIELD)
 annotation class CommandName(val name: String)
 
@@ -26,7 +22,6 @@ enum class Command {
                 ?: throw IllegalArgumentException("CommandName is not defined from ${it.name}!")
         }
 
-        fun byName(name: String): Either<Error.UnknownCommand, Command> =
-            namesToCommands[name]?.right() ?: Error.UnknownCommand.left()
+        fun getByNameOrNull(name: String): Command? = namesToCommands[name]
     }
 }
