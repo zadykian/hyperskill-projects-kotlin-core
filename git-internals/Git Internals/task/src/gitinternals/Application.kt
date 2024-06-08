@@ -2,9 +2,7 @@ package gitinternals
 
 import arrow.core.raise.either
 import arrow.core.raise.ensure
-import gitinternals.objects.GitCommit
-import gitinternals.objects.GitObjectHash
-import gitinternals.objects.ensureIs
+import gitinternals.objects.*
 import gitinternals.readers.GitBranchesReader
 import gitinternals.readers.GitLogReader
 import gitinternals.readers.GitObjectReader
@@ -36,7 +34,14 @@ class Application(private val io: IO) {
     private fun runCatFile(gitRootDirectory: Path) {
         val gitObjectHash = requestGitObjectHash(Requests.GIT_OBJECT_HASH)
         val gitObject = GitObjectReader.read(gitRootDirectory, gitObjectHash)
-        io.write("*${gitObject::class.simpleName!!.replace("Git", "").uppercase()}*")
+
+        val displayName = when (gitObject) {
+            is GitCommit -> "commit"
+            is GitTreeView, is GitTree -> "tree"
+            is GitBlob -> "blob"
+        }
+
+        io.write("*${displayName.uppercase()}*")
         io.write(gitObject.toString())
     }
 
@@ -100,7 +105,7 @@ class Application(private val io: IO) {
     private object Requests {
         const val COMMAND = "Enter command:"
         const val GIT_BRANCH_NAME = "Enter branch name:"
-        const val GIT_COMMIT_HASH = "Enter commit hash:"
+        const val GIT_COMMIT_HASH = "Enter commit-hash:"
         const val GIT_ROOT_DIRECTORY = "Enter .git directory location:"
         const val GIT_OBJECT_HASH = "Enter git object hash:"
     }

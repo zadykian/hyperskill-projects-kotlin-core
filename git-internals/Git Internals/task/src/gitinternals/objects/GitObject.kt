@@ -2,7 +2,6 @@ package gitinternals.objects
 
 import arrow.core.NonEmptyList
 import gitinternals.*
-import java.io.File
 import java.time.ZonedDateTime
 
 sealed interface GitObject {
@@ -45,7 +44,7 @@ data class GitTree(override val hash: GitObjectHash, val nodes: NonEmptyList<Nam
         fun run(gitTree: TreeNode, parentTokens: ArrayDeque<NonEmptyString>): Unit =
             when (gitTree) {
                 is GitBlob -> parentTokens.forEachIndexed { index, token ->
-                    if (index > 0) append(File.separator)
+                    if (index > 0) append('/')
                     append(token)
                     if (index == parentTokens.lastIndex) append("\n")
                 }
