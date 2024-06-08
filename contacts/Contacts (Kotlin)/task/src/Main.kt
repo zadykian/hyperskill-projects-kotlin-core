@@ -1,5 +1,7 @@
 package contacts
 
 fun main() {
-    println("Hello World!")
+    val io = IO(::readln, ::println)
+    val application = Application(io)
+    application.run()
 }
