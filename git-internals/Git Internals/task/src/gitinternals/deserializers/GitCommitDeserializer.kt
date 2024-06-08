@@ -1,16 +1,20 @@
-package gitinternals.parse
+package gitinternals.deserializers
 
 import arrow.core.raise.ensure
-import gitinternals.*
+import gitinternals.Error
+import gitinternals.objects.GitCommit
+import gitinternals.objects.GitObjectHash
+import gitinternals.toNonEmptyStringOrNull
+import gitinternals.toStringUtf8
 import java.time.Instant
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
 
 private typealias LineTokens = List<String>
 
-object GitCommitParser : GitObjectParser<GitCommit> {
-    context(RaiseParsingFailed)
-    override fun parse(content: ByteArray): GitCommit {
+object GitCommitDeserializer : GitObjectDeserializer<GitCommit> {
+    context(RaiseDeserializationFailed)
+    override fun deserialize(content: ByteArray): GitCommit {
         val contentLines = content.toStringUtf8().split("\n")
         val keyedLines = getKeyedLines(contentLines)
         fun get(key: String) = keyedLines[key] ?: emptyList()
@@ -34,8 +38,8 @@ object GitCommitParser : GitObjectParser<GitCommit> {
         )
     }
 
-    context(RaiseParsingFailed)
-    private fun userAndDate(lineTokens: List<LineTokens>): Pair<UserData, ZonedDateTime> {
+    context(RaiseDeserializationFailed)
+    private fun userAndDate(lineTokens: List<LineTokens>): Pair<GitCommit.UserData, ZonedDateTime> {
         ensure(lineTokens.isNotEmpty() && lineTokens.first().size == 4) {
             Error.ParsingFailed("Unexpected line tokens: [${lineTokens.joinToString()}]")
         }
@@ -47,7 +51,7 @@ object GitCommitParser : GitObjectParser<GitCommit> {
             ?: raise(Error.ParsingFailed("Email cannot be empty"))
 
         return try {
-            val user = UserData(nameValue, emailValue)
+            val user = GitCommit.UserData(nameValue, emailValue)
             val unixEpoch = timestamp.toLongOrNull() ?: raise(Error.ParsingFailed("Invalid timestamp '$timestamp'"))
             val dateTime = Instant.ofEpochSecond(unixEpoch).atZone(ZoneOffset.of(timezone))
             Pair(user, dateTime)
@@ -56,7 +60,7 @@ object GitCommitParser : GitObjectParser<GitCommit> {
         }
     }
 
-    context(RaiseParsingFailed)
+    context(RaiseDeserializationFailed)
     private fun getKeyedLines(lines: List<String>): Map<String, List<LineTokens>> =
         lines
             .takeWhile { it.isNotBlank() }

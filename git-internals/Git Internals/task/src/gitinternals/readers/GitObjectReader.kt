@@ -1,11 +1,17 @@
-package gitinternals
+package gitinternals.readers
 
 import arrow.core.raise.Raise
 import arrow.core.raise.ensure
-import gitinternals.parse.GitBlobParser
-import gitinternals.parse.GitCommitParser
-import gitinternals.parse.GitTreeViewParser
-import gitinternals.parse.RaiseParsingFailed
+import gitinternals.Error
+import gitinternals.NonEmptyString
+import gitinternals.deserializers.GitBlobDeserializer
+import gitinternals.deserializers.GitCommitDeserializer
+import gitinternals.deserializers.GitTreeViewDeserializer
+import gitinternals.deserializers.RaiseDeserializationFailed
+import gitinternals.objects.GitObject
+import gitinternals.objects.GitObjectHash
+import gitinternals.toNonEmptyStringOrNull
+import gitinternals.toStringUtf8
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.zip.InflaterInputStream
@@ -15,7 +21,7 @@ typealias RaiseFailedToReadGitObject = Raise<Error.FailedToReadGitObject>
 private class GitObjectFile(val header: NonEmptyString, val content: ByteArray)
 
 object GitObjectReader {
-    context(RaiseFailedToReadGitObject, RaiseParsingFailed)
+    context(RaiseFailedToReadGitObject, RaiseDeserializationFailed)
     fun read(gitRootDirectory: Path, gitObjectHash: GitObjectHash): GitObject {
         val gitObjectPath = gitRootDirectory
             .resolve("objects")
@@ -29,7 +35,7 @@ object GitObjectReader {
         return loadObject(gitObjectPath)
     }
 
-    context(RaiseFailedToReadGitObject, RaiseParsingFailed)
+    context(RaiseFailedToReadGitObject, RaiseDeserializationFailed)
     private fun loadObject(gitObjectPath: Path): GitObject {
         val file = try {
             readFile(gitObjectPath)
@@ -43,14 +49,14 @@ object GitObjectReader {
 
         val fileType = file.header.takeWhile { !it.isWhitespace() }.toString().lowercase()
 
-        val parser = when (fileType) {
-            "blob" -> GitBlobParser
-            "commit" -> GitCommitParser
-            "tree" -> GitTreeViewParser
+        val deserializer = when (fileType) {
+            "blob" -> GitBlobDeserializer
+            "commit" -> GitCommitDeserializer
+            "tree" -> GitTreeViewDeserializer
             else -> raise(Error.UnknownGitObjectType(file.header))
         }
 
-        return parser.parse(file.content)
+        return deserializer.deserialize(file.content)
     }
 
     context(RaiseFailedToReadGitObject)
@@ -75,4 +81,3 @@ object GitObjectReader {
                 GitObjectFile(header, content)
             }
 }
-

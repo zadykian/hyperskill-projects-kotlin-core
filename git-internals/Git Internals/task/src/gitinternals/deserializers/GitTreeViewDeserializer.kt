@@ -1,14 +1,18 @@
-package gitinternals.parse
+package gitinternals.deserializers
 
 import arrow.core.toNonEmptyListOrNull
-import gitinternals.*
+import gitinternals.Error
+import gitinternals.objects.GitObjectHash
+import gitinternals.objects.GitTreeView
+import gitinternals.toNonEmptyStringOrNull
+import gitinternals.toStringUtf8
 
-object GitTreeViewParser : GitObjectParser<GitTreeView> {
+object GitTreeViewDeserializer : GitObjectDeserializer<GitTreeView> {
     private const val SPACE_CODE = '\u0020'.code.toByte()
     private const val NULL_CODE = 0.toByte()
 
-    context(RaiseParsingFailed)
-    override fun parse(content: ByteArray): GitTreeView {
+    context(RaiseDeserializationFailed)
+    override fun deserialize(content: ByteArray): GitTreeView {
         fun raise(text: String): Nothing = raise(Error.ParsingFailed(text))
         val iterator = content.iterator()
 

@@ -1,6 +1,12 @@
-package gitinternals
+package gitinternals.readers
 
 import arrow.core.raise.Raise
+import gitinternals.Error
+import gitinternals.appendLine
+import gitinternals.dateTimeFormatter
+import gitinternals.objects.GitBranch
+import gitinternals.objects.GitCommit
+import gitinternals.objects.GitObjectHash
 import java.nio.file.Path
 
 data class GitLogEntry(

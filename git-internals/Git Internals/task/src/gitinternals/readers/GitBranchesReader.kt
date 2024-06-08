@@ -1,37 +1,18 @@
-package gitinternals
+package gitinternals.readers
 
-import arrow.core.Either
-import arrow.core.left
 import arrow.core.raise.Raise
-import arrow.core.right
+import gitinternals.Error
+import gitinternals.NonEmptyString
+import gitinternals.RaiseInvalidGitObjectHash
+import gitinternals.objects.GitBranch
+import gitinternals.objects.GitBranches
+import gitinternals.objects.GitObjectHash
+import gitinternals.toNonEmptyStringOrNull
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.streams.asSequence
 
 typealias RaiseFailedToReadGitBranch = Raise<Error.FailedToReadGitBranch>
-
-data class GitBranch(val name: NonEmptyString, val commitHash: GitObjectHash)
-
-class GitBranches private constructor(private val current: GitBranch, private val others: Set<GitBranch>) {
-    override fun toString() =
-        others
-            .asSequence()
-            .plus(current)
-            .sortedBy { it.name }
-            .joinToString("\n") { "${(if (it === current) "* " else "  ")}${it.name}" }
-
-    companion object {
-        operator fun invoke(
-            current: GitBranch,
-            others: List<GitBranch>
-        ): Either<Error.InvalidGitBranches, GitBranches> {
-            val othersSet = others.toSet()
-            return if (current in othersSet)
-                Error.InvalidGitBranches("Current branch should not belong to the set of others").left()
-            else GitBranches(current, othersSet).right()
-        }
-    }
-}
 
 object GitBranchesReader {
     context(RaiseFailedToReadGitBranch, RaiseInvalidGitObjectHash)

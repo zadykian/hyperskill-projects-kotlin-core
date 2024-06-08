@@ -3,6 +3,10 @@ package gitinternals
 import arrow.core.raise.Raise
 import arrow.core.raise.either
 import arrow.core.raise.ensure
+import gitinternals.objects.GitObjectHash
+import gitinternals.readers.GitBranchesReader
+import gitinternals.readers.GitLogReader
+import gitinternals.readers.GitObjectReader
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
