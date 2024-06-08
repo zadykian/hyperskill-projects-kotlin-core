@@ -10,8 +10,8 @@ typealias RaiseFailedToReadGitBranch = Raise<FailedToReadGitBranch>
 typealias RaiseDeserializationFailed = Raise<DeserializationFailed>
 
 sealed class Error(val displayText: CharSequence) {
-    open class InvalidInput(displayText: CharSequence) : Error(displayText)
-    open class FailedToReadGitObject(message: CharSequence) : Error(message)
-    open class FailedToReadGitBranch(message: CharSequence) : Error(message)
-    open class DeserializationFailed(message: CharSequence) : Error(message)
+    class InvalidInput(displayText: CharSequence) : Error(displayText)
+    class FailedToReadGitObject(message: CharSequence) : Error(message)
+    class FailedToReadGitBranch(message: CharSequence) : Error(message)
+    class DeserializationFailed(message: CharSequence) : Error(message)
 }

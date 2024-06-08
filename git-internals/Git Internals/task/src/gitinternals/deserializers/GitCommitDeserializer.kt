@@ -15,7 +15,7 @@ private typealias LineTokens = List<String>
 
 object GitCommitDeserializer : GitObjectDeserializer<GitCommit> {
     context(RaiseDeserializationFailed)
-    override fun deserialize(content: ByteArray): GitCommit {
+    override fun deserialize(objectHash: GitObjectHash, content: ByteArray): GitCommit {
         val contentLines = content.toStringUtf8().split("\n")
         val keyedLines = getKeyedLines(contentLines)
         fun get(key: String) = keyedLines[key] ?: emptyList()
@@ -36,6 +36,7 @@ object GitCommitDeserializer : GitObjectDeserializer<GitCommit> {
             ?: raise(Error.DeserializationFailed("Commit message cannot be empty"))
 
         return GitCommit(
+            hash = objectHash,
             tree = tree,
             parents = parents,
             author = author,

@@ -2,10 +2,13 @@ package gitinternals
 
 import arrow.core.raise.either
 import arrow.core.raise.ensure
+import gitinternals.objects.GitCommit
 import gitinternals.objects.GitObjectHash
+import gitinternals.objects.ensureIs
 import gitinternals.readers.GitBranchesReader
 import gitinternals.readers.GitLogReader
 import gitinternals.readers.GitObjectReader
+import gitinternals.readers.GitTreeReader
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -60,7 +63,9 @@ class Application(private val io: IO) {
     context(RaiseAnyError)
     private fun runCommitTree(gitRootDirectory: Path) {
         val commitHash = requestGitObjectHash(Requests.GIT_COMMIT_HASH)
-        TODO()
+        val gitCommit = GitObjectReader.read(gitRootDirectory, commitHash).ensureIs<GitCommit>()
+        val gitTree = GitTreeReader.read(gitRootDirectory, gitCommit.tree)
+        io.write(gitTree.toString())
     }
 
     context(RaiseInvalidInput)

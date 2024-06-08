@@ -13,7 +13,7 @@ object GitTreeViewDeserializer : GitObjectDeserializer<GitTreeView> {
     private const val NULL_CODE = 0.toByte()
 
     context(RaiseDeserializationFailed)
-    override fun deserialize(content: ByteArray): GitTreeView {
+    override fun deserialize(objectHash: GitObjectHash, content: ByteArray): GitTreeView {
         fun raise(text: String): Nothing = raise(Error.DeserializationFailed(text))
         val iterator = content.iterator()
 
@@ -30,12 +30,12 @@ object GitTreeViewDeserializer : GitObjectDeserializer<GitTreeView> {
                 ?: raise("Object name cannot be empty")
 
             val objectHashBytes = iterator.asSequence().take(20).toList()
-            val objectHash = GitObjectHash.fromBytesOrNull(objectHashBytes) ?: raise("Tree contains invalid child hash")
-            GitTreeView.NodeView(permissionMetadataNumber, objectHash, objectName)
+            val nodeHash = GitObjectHash.fromBytesOrNull(objectHashBytes) ?: raise("Tree contains invalid child hash")
+            GitTreeView.NodeView(permissionMetadataNumber, nodeHash, objectName)
         }
 
         val nonEmptyNodes = nodes.toList().toNonEmptyListOrNull() ?: raise("Tree nodes cannot be empty")
-        return GitTreeView(nonEmptyNodes)
+        return GitTreeView(objectHash, nonEmptyNodes)
     }
 
     private fun Iterator<Byte>.takeWhile(predicate: (Byte) -> Boolean): List<Byte> =

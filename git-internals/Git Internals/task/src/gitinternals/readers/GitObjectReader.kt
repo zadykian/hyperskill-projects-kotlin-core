@@ -23,11 +23,11 @@ object GitObjectReader {
             Error.FailedToReadGitObject("Git object with hash '$gitObjectHash' does not exist on disk!")
         }
 
-        return loadObject(gitObjectPath)
+        return loadObject(gitObjectHash, gitObjectPath)
     }
 
     context(RaiseFailedToReadGitObject, RaiseDeserializationFailed)
-    private fun loadObject(gitObjectPath: Path): GitObject {
+    private fun loadObject(gitObjectHash: GitObjectHash, gitObjectPath: Path): GitObject {
         val file = try {
             readFile(gitObjectPath)
         } catch (exception: Exception) {
@@ -47,7 +47,7 @@ object GitObjectReader {
             else -> raise(Error.FailedToReadGitObject("Unknown git object type '$fileType'"))
         }
 
-        return deserializer.deserialize(file.content)
+        return deserializer.deserialize(gitObjectHash, file.content)
     }
 
     context(RaiseFailedToReadGitObject)

@@ -1,14 +1,15 @@
 package gitinternals.objects
 
 import arrow.core.NonEmptyList
-import gitinternals.NonEmptyString
-import gitinternals.appendLine
-import gitinternals.dateTimeFormatter
+import gitinternals.*
 import java.time.ZonedDateTime
 
-sealed interface GitObject
+sealed interface GitObject {
+    val hash: GitObjectHash
+}
 
 data class GitCommit(
+    override val hash: GitObjectHash,
     val tree: GitObjectHash,
     val parents: List<GitObjectHash>,
     val author: UserData,
@@ -34,18 +35,28 @@ data class GitCommit(
 
 sealed interface TreeNode : GitObject
 
-data class GitBlob(val content: NonEmptyString) : TreeNode {
+data class GitBlob(override val hash: GitObjectHash, val content: NonEmptyString) : TreeNode {
     override fun toString() = content.toString()
 }
 
-data class GitTree(val nodes: NonEmptyList<NamedNode>) : TreeNode {
+data class GitTree(override val hash: GitObjectHash, val nodes: NonEmptyList<NamedNode>) : TreeNode {
     data class NamedNode(val name: NonEmptyString, val node: TreeNode)
 }
 
-data class GitTreeView(val nodes: NonEmptyList<NodeView>) : GitObject {
+data class GitTreeView(override val hash: GitObjectHash, val nodes: NonEmptyList<NodeView>) : GitObject {
     override fun toString() = nodes.joinToString("\n")
 
     data class NodeView(val permissionMetadataNumber: UInt, val objectHash: GitObjectHash, val name: NonEmptyString) {
         override fun toString() = "$permissionMetadataNumber $objectHash $name"
     }
 }
+
+context(RaiseFailedToReadGitObject)
+inline fun <reified TGitObject : GitObject> GitObject.ensureIs(): TGitObject =
+    if (this is TGitObject) this
+    else raise(
+        Error.FailedToReadGitObject(
+            "Git object with hash '${this.hash}' is not a ${TGitObject::class.simpleName}. "
+                    + "Actual type is ${this::class.simpleName}"
+        )
+    )
