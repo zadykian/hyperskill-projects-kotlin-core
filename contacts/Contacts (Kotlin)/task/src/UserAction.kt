@@ -1,8 +1,5 @@
 package contacts
 
-@Target(AnnotationTarget.FIELD)
-private annotation class DisplayName(val name: String)
-
 enum class UserAction {
     @DisplayName("add")
     AddRecord,

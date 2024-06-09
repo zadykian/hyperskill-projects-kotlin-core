@@ -1,5 +1,9 @@
 package contacts
 
+import arrow.core.Either
+import arrow.core.left
+import arrow.core.right
+
 @JvmInline
 value class NonEmptyString private constructor(private val value: String) :
     CharSequence by value,
@@ -13,10 +17,10 @@ value class NonEmptyString private constructor(private val value: String) :
     override fun toString() = value
 
     companion object {
-        operator fun invoke(value: String): NonEmptyString? =
-            if (value.isBlank()) null
-            else NonEmptyString(value)
+        operator fun invoke(value: String): Either<Error.InvalidInput, NonEmptyString> =
+            if (value.isBlank()) Error.InvalidInput("Value cannot be empty").left()
+            else NonEmptyString(value).right()
     }
 }
 
-fun String.toNonEmptyOrNull() = NonEmptyString(this)
+fun String.toNonEmptyOrNull(): NonEmptyString? = NonEmptyString(this).getOrNull()

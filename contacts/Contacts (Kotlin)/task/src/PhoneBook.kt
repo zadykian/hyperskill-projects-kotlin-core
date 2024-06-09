@@ -1,11 +1,14 @@
 package contacts
 
 data class Record(
+    @DisplayName("name")
     val name: NonEmptyString,
+    @DisplayName("surname")
     val surname: NonEmptyString,
-    val phone: PhoneNumber?,
+    @DisplayName("number")
+    val phoneNumber: PhoneNumber?,
 ) {
-    override fun toString() = "$name $surname, ${phone ?: "[no number]"}"
+    override fun toString() = "$name $surname, ${phoneNumber ?: "[no number]"}"
 }
 
 class PhoneBook {
