@@ -1,12 +1,12 @@
 package contacts
 
-data class Record(
-    @DisplayName("name")
-    val name: NonEmptyString,
-    @DisplayName("surname")
-    val surname: NonEmptyString,
-    @DisplayName("number")
-    val phoneNumber: PhoneNumber?,
+import contacts.dynamic.DisplayName
+import contacts.dynamic.DynamicallyInvokable
+
+data class Record @DynamicallyInvokable constructor(
+    @DisplayName("name") val name: NonEmptyString,
+    @DisplayName("surname") val surname: NonEmptyString,
+    @DisplayName("number") val phoneNumber: PhoneNumber?,
 ) {
     override fun toString() = "$name $surname, ${phoneNumber ?: "[no number]"}"
 }

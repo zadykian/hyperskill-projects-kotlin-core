@@ -1,5 +1,7 @@
 package contacts
 
+import contacts.dynamic.DisplayName
+
 enum class UserAction {
     @DisplayName("add")
     AddRecord,

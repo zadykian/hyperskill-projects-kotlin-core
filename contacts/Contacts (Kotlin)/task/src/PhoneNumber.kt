@@ -3,6 +3,7 @@ package contacts
 import arrow.core.Either
 import arrow.core.left
 import arrow.core.right
+import contacts.dynamic.DynamicallyInvokable
 
 /**
  * Phone number is expected to satisfy the following rules:
@@ -25,6 +26,7 @@ value class PhoneNumber private constructor(private val value: String) {
             RegexOption.IGNORE_CASE
         )
 
+        @DynamicallyInvokable
         operator fun invoke(value: String): Either<Error.InvalidInput, PhoneNumber> =
             if (regex.matches(value)) PhoneNumber(value).right()
             else Error.InvalidInput("Wrong number format!").left()

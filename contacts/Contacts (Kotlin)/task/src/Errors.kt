@@ -1,12 +1,13 @@
 package contacts
 
 import arrow.core.raise.Raise
-import contacts.Error.InvalidInput
 
 typealias RaiseAnyError = Raise<Error>
-typealias RaiseInvalidInput = Raise<InvalidInput>
+typealias RaiseInvalidInput = Raise<Error.InvalidInput>
+typealias RaiseDynamicInvocationFailed = Raise<Error.DynamicInvocationFailed>
+
 
 sealed class Error(val displayText: CharSequence) {
     class InvalidInput(displayText: CharSequence) : Error(displayText)
-    class FailedToCreateObject(displayText: CharSequence) : Error(displayText)
+    class DynamicInvocationFailed(displayText: CharSequence) : Error(displayText)
 }

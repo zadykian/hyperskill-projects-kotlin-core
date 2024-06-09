@@ -1,25 +1,22 @@
 import arrow.core.Either
-import arrow.core.raise.either
 import assertk.Assert
 import assertk.assertThat
 import assertk.assertions.isEqualTo
 import assertk.assertions.support.expected
 import contacts.Error
-import contacts.ObjectInitializer
 import contacts.Record
+import contacts.dynamic.ObjectInitializer
 import org.junit.jupiter.api.Test
 
 class ObjectInitializerTests {
     @Test
     fun createNewRecord() {
-        val result = either {
-            ObjectInitializer.createNew<Record> {
-                when (it) {
-                    "name" -> "SomeName"
-                    "surname" -> "SomeSurname"
-                    "number" -> "+0 (123) 456 789"
-                    else -> throw IllegalArgumentException("Unknown property: $it")
-                }
+        val result = ObjectInitializer.createNew<Record> {
+            when (it) {
+                "name" -> "SomeName"
+                "surname" -> "SomeSurname"
+                "number" -> "+0 (123) 456 789"
+                else -> throw IllegalArgumentException("Unknown property: $it")
             }
         }
 
