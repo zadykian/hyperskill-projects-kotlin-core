@@ -1,5 +1,6 @@
 package contacts.domain
 
+import arrow.core.Either
 import arrow.core.left
 import arrow.core.right
 import contacts.Error
@@ -16,9 +17,10 @@ value class DateSafe private constructor(private val value: LocalDate) {
         private val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 
         @DynamicallyInvokable
-        operator fun invoke(value: String) =
+        operator fun invoke(value: String): Either<Error.InvalidInput, DateSafe> =
             try {
-                LocalDate.parse(value, dateFormatter).right()
+                val date = LocalDate.parse(value, dateFormatter)
+                DateSafe(date).right()
             } catch (e: Exception) {
                 Error.InvalidInput("Invalid instant string: '$value'").left()
             }
@@ -34,9 +36,10 @@ value class DateTimeSafe private constructor(private val value: LocalDateTime) {
         private val dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm")
 
         @DynamicallyInvokable
-        operator fun invoke(value: String) =
+        operator fun invoke(value: String): Either<Error.InvalidInput, DateTimeSafe> =
             try {
-                LocalDateTime.parse(value, dateTimeFormatter).right()
+                val dateTime = LocalDateTime.parse(value, dateTimeFormatter)
+                DateTimeSafe(dateTime).right()
             } catch (e: Exception) {
                 Error.InvalidInput("Invalid instant string: '$value'").left()
             }

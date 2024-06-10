@@ -14,7 +14,15 @@ object DynamicStringBuilder {
             .joinToString(separator = "\n") {
                 val property = namesToProps.getValue(it.originalName)
                 val displayName = it.displayName.replaceFirstChar { c -> c.uppercase() }
-                val value = property.getter.call(obj)?.toString() ?: "[no data]"
+                val defaultValue = "[no data]"
+
+                // https://youtrack.jetbrains.com/issue/KT-67026
+                val value = try {
+                    property.getter.call(obj)?.toString() ?: defaultValue
+                } catch (e: Exception) {
+                    defaultValue
+                }
+
                 "$displayName: $value"
             }
     }
