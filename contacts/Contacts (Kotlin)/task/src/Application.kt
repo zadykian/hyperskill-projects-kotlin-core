@@ -63,29 +63,14 @@ class Application(private val io: IO) {
 
     context(RaiseInvalidInput)
     private fun removeRecord() {
-        val allRecords = phoneBook.listAll()
-        if (allRecords.isEmpty()) {
-            io.write(Responses.noRecordsToRemove())
-            return
-        }
-
-        io.write(allRecords.asString())
-        io.write(Requests.selectRecord())
-
-        val recordNumber = requestNumber(1..allRecords.size).bind()
-        val recordToRemove = allRecords[recordNumber - 1]
+        val recordToRemove = chooseExistingRecord(UserCommand.RemoveRecord)
         phoneBook.remove(recordToRemove)
-
         io.write(Responses.recordRemoved())
     }
 
+    context(RaiseAnyError)
     private fun editRecord() {
-        val allRecords = phoneBook.listAll()
-        if (allRecords.isEmpty()) {
-            io.write(Responses.noRecordsToEdit())
-            return
-        }
-
+        val recordToEdit = chooseExistingRecord(UserCommand.EditRecord)
         TODO()
     }
 
@@ -97,6 +82,20 @@ class Application(private val io: IO) {
     private fun listAllRecords() {
         val listAsString = phoneBook.listAll().asString()
         io.write(listAsString)
+    }
+
+    context(RaiseInvalidInput)
+    private fun chooseExistingRecord(currentCommand: UserCommand): Record {
+        val allRecords = phoneBook.listAll()
+        if (allRecords.isEmpty()) {
+            raise(Errors.noRecordsTo(currentCommand))
+        }
+
+        io.write(allRecords.asString())
+        io.write(Requests.selectRecord())
+
+        val recordNumber = requestNumber(1..allRecords.size).bind()
+        return allRecords[recordNumber - 1]
     }
 
     private fun requestNumber(range: IntRange): Either<InvalidInput, Int> {
@@ -117,14 +116,13 @@ class Application(private val io: IO) {
 
     private object Responses {
         fun recordsCount(count: Int) = "The Phone Book has $count records."
-        fun noRecordsToEdit() = "No records to edit!"
-        fun noRecordsToRemove() = "No records to remove!"
         fun recordAdded() = "The record added."
         fun recordRemoved() = "The record removed!"
     }
 
     private object Errors {
         fun unknownCommand(input: String) = InvalidInput("Unknown command '$input'")
+        fun noRecordsTo(command: UserCommand) = InvalidInput("No records to ${command.displayName}!")
         fun invalidNumber(input: String) = InvalidInput("Invalid number: '$input'")
         fun numberNotInRange(range: IntRange) = InvalidInput("Number should belong to range [$range]")
     }

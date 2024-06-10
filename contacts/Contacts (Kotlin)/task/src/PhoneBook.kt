@@ -1,5 +1,6 @@
 package contacts
 
+import arrow.core.raise.ensure
 import contacts.dynamic.annotations.DisplayName
 import contacts.dynamic.annotations.DynamicallyInvokable
 import contacts.dynamic.annotations.Optional
@@ -17,11 +18,23 @@ class PhoneBook {
 
     fun add(record: Record) = records.add(record)
 
-    fun remove(record: Record) = records.remove(record)
+    context(RaiseInvalidInput)
+    fun remove(record: Record) {
+        val wasRemoved = records.remove(record)
+        ensure(wasRemoved) { Errors.recordDoesNotExist(record) }
+    }
 
-    fun edit() {
-        TODO()
+    context(RaiseInvalidInput)
+    fun edit(existingRecord: Record, modification: (Record) -> Record) {
+        val index = records.indexOf(existingRecord)
+        ensure(index > 0) { Errors.recordDoesNotExist(existingRecord) }
+        val modified = modification(records[index])
+        records[index] = modified
     }
 
     fun listAll(): List<Record> = records
+
+    private object Errors {
+        fun recordDoesNotExist(record: Record) = Error.InvalidInput("Record '$record' doesn't exist in the Phone Book!")
+    }
 }

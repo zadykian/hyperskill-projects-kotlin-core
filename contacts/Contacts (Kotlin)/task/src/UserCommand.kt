@@ -21,10 +21,10 @@ enum class UserCommand {
     @DisplayName("exit")
     ExitProgram;
 
+    val displayName = this.declaringJavaClass.getField(name).getAnnotation(DisplayName::class.java).name
+
     companion object {
-        private val displayNamesToCommands = entries.associateBy {
-            it.declaringJavaClass.getField(it.name).getAnnotation(DisplayName::class.java).name
-        }
+        private val displayNamesToCommands = entries.associateBy { it.displayName }
 
         fun getByNameOrNull(name: String) = displayNamesToCommands[name]
 
