@@ -15,8 +15,8 @@ enum class UserCommand {
     @DisplayName("count")
     DisplayRecordsCount,
 
-    @DisplayName("list")
-    ListAllRecords,
+    @DisplayName("info")
+    ShowRecordInfo,
 
     @DisplayName("exit")
     ExitProgram;

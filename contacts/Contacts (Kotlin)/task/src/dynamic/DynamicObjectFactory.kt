@@ -16,24 +16,23 @@ import kotlin.reflect.*
 import kotlin.reflect.full.*
 import kotlin.reflect.jvm.jvmErasure
 
-typealias ValueReader = DynamicObjectFactory.Param.PropertyContext.() -> String
+typealias ValueReader = DynamicObjectFactory.PropOrParamMetadata.PropertyContext.() -> String
 typealias PropertyName = String
 
 object DynamicObjectFactory {
-    inline fun <reified T : Any> createNew(noinline valueReader: ValueReader): Ior<Error, T> =
+    fun createNew(type: KClass<*>, valueReader: ValueReader): Ior<Error, Any> =
         ior(Error::combine) {
-            val (invoker, params) = getDynamicObjectInvoker(T::class).bind()
+            val (invoker, params) = getDynamicObjectInvoker(type).bind()
             val invokerArgValues = getInvokerArgValues(params, valueReader).bind()
-            invoker.invoke(invokerArgValues) as T
+            invoker.invoke(invokerArgValues)
         }
 
-    context(RaiseDynamicInvocationFailed)
-    inline fun <reified T : Any> propertyNamesOf(): Either<Error, List<PropertyName>> = either {
-        getDynamicObjectInvoker(T::class)
-            .bind()
-            .params
-            .map { it.displayName }
+    fun propsOf(type: KClass<*>): Either<Error, List<PropOrParamMetadata>> = either {
+        getDynamicObjectInvoker(type).bind().params
     }
+
+    context(RaiseDynamicInvocationFailed)
+    inline fun <reified T : Any> casesOf() = T::class.sealedSubclasses.associateBy { it.getDisplayName() }
 
     inline fun <reified T : Any> copy(
         entity: T,
@@ -77,7 +76,7 @@ object DynamicObjectFactory {
 
     context(RaiseAnyError)
     fun getInvokerArgValues(
-        params: List<Param>,
+        params: List<PropOrParamMetadata>,
         valueReader: ValueReader
     ): Ior<Error, Array<Any?>> = ior(Error::combine) {
         params
@@ -87,7 +86,7 @@ object DynamicObjectFactory {
     }
 
     @Suppress("UNCHECKED_CAST")
-    fun getValue(valueReader: ValueReader, param: Param): Ior<Error, Any?> =
+    fun getValue(valueReader: ValueReader, param: PropOrParamMetadata): Ior<Error, Any?> =
         ior(Error::combine) {
             val strValue = valueReader(param.context)
 
@@ -105,8 +104,9 @@ object DynamicObjectFactory {
             when (val either = invokerResult as Either<Error, Any>) {
                 is Either.Right -> either.value
                 is Either.Left -> {
-                    if (param.isOptional) Ior.Both(either.value, null).bind()
-                    else raise(either.value)
+                    val error = Error.InvalidInput("Bad ${param.displayName}!")
+                    if (param.isOptional) Ior.Both(error, null).bind()
+                    else raise(error)
                 }
             }
         }
@@ -153,7 +153,7 @@ object DynamicObjectFactory {
         parameters
             .drop(if (isCompanionMember) 1 else 0)
             .map { param ->
-                Param(
+                PropOrParamMetadata(
                     displayName = param.getDisplayName(),
                     originalName = param.name
                         ?: raise(Error.DynamicInvocationFailed("Parameter $param is expected to have a name")),
@@ -163,7 +163,7 @@ object DynamicObjectFactory {
             }
 
     context(RaiseDynamicInvocationFailed)
-    private fun KAnnotatedElement.getDisplayName(): String {
+    fun KAnnotatedElement.getDisplayName(): String {
         val displayName = annotations.filterIsInstance<DisplayName>().singleOrNull()?.name
 
         if (displayName != null) {
@@ -175,13 +175,14 @@ object DynamicObjectFactory {
         return when (this) {
             is KParameter -> name ?: raise()
             is KProperty<*> -> name
+            is KClass<*> -> simpleName ?: raise()
             else -> raise()
         }
     }
 
-    data class InvokerWithParams(val invoker: Invoker<*>, val params: List<Param>)
+    data class InvokerWithParams(val invoker: Invoker<*>, val params: List<PropOrParamMetadata>)
 
-    data class Param(
+    data class PropOrParamMetadata(
         val displayName: PropertyName, val originalName: PropertyName, val type: KClass<*>, val isOptional: Boolean
     ) {
         val context = PropertyContext(displayName)

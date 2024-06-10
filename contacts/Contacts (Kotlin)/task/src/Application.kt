@@ -11,7 +11,9 @@ import contacts.domain.PhoneBook
 import contacts.domain.PhoneBookEntry
 import contacts.domain.Record
 import contacts.dynamic.DynamicObjectFactory
+import contacts.dynamic.DynamicStringBuilder
 import contacts.dynamic.PropertyName
+import kotlin.reflect.KClass
 
 data class IO(val read: () -> String, val write: (CharSequence) -> Unit)
 
@@ -42,13 +44,14 @@ class Application(private val io: IO) {
         UserCommand.RemoveRecord -> removeRecord()
         UserCommand.EditRecord -> editRecord()
         UserCommand.DisplayRecordsCount -> displayRecordsCount()
-        UserCommand.ListAllRecords -> listAllRecords()
+        UserCommand.ShowRecordInfo -> showRecordInfo()
         UserCommand.ExitProgram -> Unit
     }
 
     context(RaiseAnyError)
     private fun addRecord() {
-        val recordIor = DynamicObjectFactory.createNew<Record> { requestPropertyValue(this) }
+        val targetType = requestRecordType()
+        val recordIor = DynamicObjectFactory.createNew(targetType) { requestPropertyValue(this) }
 
         val newRecord = when (recordIor) {
             is Ior.Right -> recordIor.value
@@ -60,7 +63,7 @@ class Application(private val io: IO) {
             is Ior.Left -> raise(recordIor.value)
         }
 
-        phoneBook.add(newRecord)
+        phoneBook.add(newRecord as Record)
         io.write(Responses.recordAdded())
     }
 
@@ -74,9 +77,9 @@ class Application(private val io: IO) {
     context(RaiseAnyError)
     private fun editRecord() {
         val recordToEdit = chooseExistingRecord(UserCommand.EditRecord)
-        val propertyNames = DynamicObjectFactory.propertyNamesOf<Record>().bind()
+        val propertyNames = DynamicObjectFactory.propsOf(recordToEdit::class).bind().map { it.displayName }
 
-        io.write(Requests.selectRecordProperty(propertyNames))
+        io.write(Requests.recordProperty(propertyNames))
         val inputPropName = io.read().lowercase().trim()
         ensure(inputPropName in propertyNames) { Errors.invalidPropName(inputPropName) }
 
@@ -85,7 +88,7 @@ class Application(private val io: IO) {
         io.write(Responses.recordUpdated())
     }
 
-    private fun requestPropertyValue(context: DynamicObjectFactory.Param.PropertyContext): String {
+    private fun requestPropertyValue(context: DynamicObjectFactory.PropOrParamMetadata.PropertyContext): String {
         io.write(Requests.propertyValue(context.propertyName))
         return io.read()
     }
@@ -95,9 +98,29 @@ class Application(private val io: IO) {
         io.write(Responses.recordsCount(count))
     }
 
-    private fun listAllRecords() {
-        val listAsString = phoneBook.listAll().asBriefList()
+    context(RaiseAnyError)
+    private fun showRecordInfo() {
+        val allEntries = phoneBook.listAll()
+        val listAsString = allEntries.asBriefList()
         io.write(listAsString)
+
+        io.write(Requests.recordInfoIndex())
+        val number = requestNumber(1..allEntries.size).bind()
+        val targetEntry = allEntries[number - 1]
+
+        val recordString = DynamicStringBuilder.asString(targetEntry.record)
+        io.write(recordString)
+        val recordInfoString = DynamicStringBuilder.asString(targetEntry.info)
+        io.write(recordInfoString)
+    }
+
+    context(RaiseAnyError)
+    private fun requestRecordType(): KClass<out Record> {
+        val recordCases = DynamicObjectFactory.casesOf<Record>()
+        io.write(Requests.recordType(recordCases.keys))
+        val input = io.read().lowercase().trim()
+        val targetType = recordCases[input] ?: raise(Errors.unknownRecordType(input))
+        return targetType
     }
 
     context(RaiseInvalidInput)
@@ -108,7 +131,7 @@ class Application(private val io: IO) {
         }
 
         io.write(allRecords.asBriefList())
-        io.write(Requests.selectRecord())
+        io.write(Requests.record())
 
         val recordNumber = requestNumber(1..allRecords.size).bind()
         return allRecords[recordNumber - 1].record
@@ -126,9 +149,11 @@ class Application(private val io: IO) {
 
     private object Requests {
         fun command() = "Enter action (${UserCommand.getAllNames().joinToString()}}):"
+        fun recordType(names: Iterable<String>) = "Enter the type (${names.joinToString()}):"
         fun propertyValue(propertyName: String) = "Enter the ${propertyName}:"
-        fun selectRecord() = "Select a record:"
-        fun selectRecordProperty(names: List<PropertyName>) = "Select a field (${names.joinToString()}):"
+        fun record() = "Select a record:"
+        fun recordProperty(names: Iterable<PropertyName>) = "Select a field (${names.joinToString()}):"
+        fun recordInfoIndex() = "Enter index to show info:"
     }
 
     private object Responses {
@@ -141,6 +166,7 @@ class Application(private val io: IO) {
 
     private object Errors {
         fun unknownCommand(input: String) = InvalidInput("Unknown command '$input'")
+        fun unknownRecordType(input: String) = InvalidInput("Unknown record type '$input'")
         fun noRecordsTo(command: UserCommand) = InvalidInput("No records to ${command.displayName}!")
         fun invalidNumber(input: String) = InvalidInput("Invalid number: '$input'")
         fun numberNotInRange(range: IntRange) = InvalidInput("Number should belong to range [$range]")
