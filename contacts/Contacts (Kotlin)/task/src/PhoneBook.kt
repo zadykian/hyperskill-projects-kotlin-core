@@ -25,11 +25,10 @@ class PhoneBook {
     }
 
     context(RaiseInvalidInput)
-    fun edit(existingRecord: Record, modification: (Record) -> Record) {
-        val index = records.indexOf(existingRecord)
-        ensure(index > 0) { Errors.recordDoesNotExist(existingRecord) }
-        val modified = modification(records[index])
-        records[index] = modified
+    fun replace(oldRecord: Record, newRecord: Record) {
+        val index = records.indexOf(oldRecord)
+        ensure(index >= 0) { Errors.recordDoesNotExist(oldRecord) }
+        records[index] = newRecord
     }
 
     fun listAll(): List<Record> = records

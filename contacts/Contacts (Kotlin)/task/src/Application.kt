@@ -4,9 +4,11 @@ import arrow.core.Either
 import arrow.core.Ior
 import arrow.core.left
 import arrow.core.raise.either
+import arrow.core.raise.ensure
 import arrow.core.right
 import contacts.Error.InvalidInput
 import contacts.dynamic.DynamicObjectFactory
+import contacts.dynamic.PropertyName
 
 data class IO(val read: () -> String, val write: (CharSequence) -> Unit)
 
@@ -42,10 +44,7 @@ class Application(private val io: IO) {
 
     context(RaiseAnyError)
     private fun addRecord() {
-        val recordIor = DynamicObjectFactory.createNew<Record> {
-            io.write(Requests.propertyValue(propertyName))
-            io.read()
-        }
+        val recordIor = DynamicObjectFactory.createNew<Record> { requestPropertyValue(this) }
 
         val newRecord = when (recordIor) {
             is Ior.Right -> recordIor.value
@@ -71,7 +70,20 @@ class Application(private val io: IO) {
     context(RaiseAnyError)
     private fun editRecord() {
         val recordToEdit = chooseExistingRecord(UserCommand.EditRecord)
-        TODO()
+        val propertyNames = DynamicObjectFactory.propertyNamesOf<Record>().bind()
+
+        io.write(Requests.selectRecordProperty(propertyNames))
+        val inputPropName = io.read().lowercase().trim()
+        ensure(inputPropName in propertyNames) { Errors.invalidPropName(inputPropName) }
+
+        val editedRecord = DynamicObjectFactory.copy(recordToEdit, inputPropName) { requestPropertyValue(this) }.bind()
+        phoneBook.replace(recordToEdit, editedRecord)
+        io.write(Responses.recordUpdated())
+    }
+
+    private fun requestPropertyValue(context: DynamicObjectFactory.Param.PropertyContext): String {
+        io.write(Requests.propertyValue(context.propertyName))
+        return io.read()
     }
 
     private fun displayRecordsCount() {
@@ -112,12 +124,14 @@ class Application(private val io: IO) {
         fun command() = "Enter action (${UserCommand.getAllNames().joinToString()}}):"
         fun propertyValue(propertyName: String) = "Enter the ${propertyName}:"
         fun selectRecord() = "Select a record:"
+        fun selectRecordProperty(names: List<PropertyName>) = "Select a field (${names.joinToString()}):"
     }
 
     private object Responses {
         fun recordsCount(count: Int) = "The Phone Book has $count records."
         fun recordAdded() = "The record added."
         fun recordRemoved() = "The record removed!"
+        fun recordUpdated() = "The record updated!"
     }
 
     private object Errors {
@@ -125,5 +139,6 @@ class Application(private val io: IO) {
         fun noRecordsTo(command: UserCommand) = InvalidInput("No records to ${command.displayName}!")
         fun invalidNumber(input: String) = InvalidInput("Invalid number: '$input'")
         fun numberNotInRange(range: IntRange) = InvalidInput("Number should belong to range [$range]")
+        fun invalidPropName(input: String) = InvalidInput("Invalid field name '$input'")
     }
 }
