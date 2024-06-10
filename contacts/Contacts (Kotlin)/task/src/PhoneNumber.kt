@@ -3,7 +3,7 @@ package contacts
 import arrow.core.Either
 import arrow.core.left
 import arrow.core.right
-import contacts.dynamic.DynamicallyInvokable
+import contacts.dynamic.annotations.DynamicallyInvokable
 
 /**
  * Phone number is expected to satisfy the following rules:

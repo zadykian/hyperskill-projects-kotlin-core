@@ -3,7 +3,7 @@ package contacts
 import arrow.core.Either
 import arrow.core.left
 import arrow.core.right
-import contacts.dynamic.DynamicallyInvokable
+import contacts.dynamic.annotations.DynamicallyInvokable
 
 @JvmInline
 value class NonEmptyString private constructor(private val value: String) :
@@ -23,3 +23,8 @@ value class NonEmptyString private constructor(private val value: String) :
 }
 
 fun String.toNonEmptyOrNull(): NonEmptyString? = NonEmptyString(this).getOrNull()
+
+fun String.toNonEmpty(): NonEmptyString = when (val either = NonEmptyString(this)) {
+    is Either.Right -> either.value
+    is Either.Left -> throw IllegalArgumentException("Value cannot be empty")
+}

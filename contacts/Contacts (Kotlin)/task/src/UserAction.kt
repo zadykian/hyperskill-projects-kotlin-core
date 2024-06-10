@@ -1,6 +1,6 @@
 package contacts
 
-import contacts.dynamic.DisplayName
+import contacts.dynamic.annotations.DisplayName
 
 enum class UserAction {
     @DisplayName("add")

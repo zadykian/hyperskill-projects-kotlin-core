@@ -1,12 +1,13 @@
 package contacts
 
-import contacts.dynamic.DisplayName
-import contacts.dynamic.DynamicallyInvokable
+import contacts.dynamic.annotations.DisplayName
+import contacts.dynamic.annotations.DynamicallyInvokable
+import contacts.dynamic.annotations.Optional
 
 data class Record @DynamicallyInvokable constructor(
     @DisplayName("name") val name: NonEmptyString,
     @DisplayName("surname") val surname: NonEmptyString,
-    @DisplayName("number") val phoneNumber: PhoneNumber?,
+    @DisplayName("number") @Optional val phoneNumber: PhoneNumber?,
 ) {
     override fun toString() = "$name $surname, ${phoneNumber ?: "[no number]"}"
 }
