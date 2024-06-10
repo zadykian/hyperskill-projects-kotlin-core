@@ -7,6 +7,9 @@ import arrow.core.raise.either
 import arrow.core.raise.ensure
 import arrow.core.right
 import contacts.Error.InvalidInput
+import contacts.domain.PhoneBook
+import contacts.domain.PhoneBookEntry
+import contacts.domain.Record
 import contacts.dynamic.DynamicObjectFactory
 import contacts.dynamic.PropertyName
 
@@ -22,6 +25,7 @@ class Application(private val io: IO) {
             if (nextCommand == UserCommand.ExitProgram) return@run
         }.onLeft { io.write(it.displayText.toString()) }
 
+        io.write(Responses.commandSeparator())
         run()
     }
 
@@ -92,7 +96,7 @@ class Application(private val io: IO) {
     }
 
     private fun listAllRecords() {
-        val listAsString = phoneBook.listAll().asString()
+        val listAsString = phoneBook.listAll().asBriefList()
         io.write(listAsString)
     }
 
@@ -103,11 +107,11 @@ class Application(private val io: IO) {
             raise(Errors.noRecordsTo(currentCommand))
         }
 
-        io.write(allRecords.asString())
+        io.write(allRecords.asBriefList())
         io.write(Requests.selectRecord())
 
         val recordNumber = requestNumber(1..allRecords.size).bind()
-        return allRecords[recordNumber - 1]
+        return allRecords[recordNumber - 1].record
     }
 
     private fun requestNumber(range: IntRange): Either<InvalidInput, Int> {
@@ -117,8 +121,8 @@ class Application(private val io: IO) {
         else Errors.numberNotInRange(range).left()
     }
 
-    private fun List<Record>.asString() =
-        mapIndexed { index, rec -> "${index + 1}. $rec" }.joinToString(separator = "\n")
+    private fun List<PhoneBookEntry>.asBriefList() =
+        mapIndexed { index, rec -> "${index + 1}. ${rec.record.toStringShort()}" }.joinToString(separator = "\n")
 
     private object Requests {
         fun command() = "Enter action (${UserCommand.getAllNames().joinToString()}}):"
@@ -128,6 +132,7 @@ class Application(private val io: IO) {
     }
 
     private object Responses {
+        fun commandSeparator() = ""
         fun recordsCount(count: Int) = "The Phone Book has $count records."
         fun recordAdded() = "The record added."
         fun recordRemoved() = "The record removed!"

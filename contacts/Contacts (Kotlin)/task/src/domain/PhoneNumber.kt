@@ -1,8 +1,9 @@
-package contacts
+package contacts.domain
 
 import arrow.core.Either
 import arrow.core.left
 import arrow.core.right
+import contacts.Error
 import contacts.dynamic.annotations.DynamicallyInvokable
 import org.intellij.lang.annotations.Language
 

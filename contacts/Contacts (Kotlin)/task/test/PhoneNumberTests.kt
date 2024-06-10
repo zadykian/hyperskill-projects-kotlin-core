@@ -1,7 +1,7 @@
 import arrow.core.Either
 import assertk.assertThat
 import assertk.assertions.isInstanceOf
-import contacts.PhoneNumber
+import contacts.domain.PhoneNumber
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
 

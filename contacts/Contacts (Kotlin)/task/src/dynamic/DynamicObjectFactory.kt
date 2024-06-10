@@ -12,7 +12,6 @@ import contacts.RaiseDynamicInvocationFailed
 import contacts.dynamic.DynamicObjectFactory.Invoker
 import contacts.dynamic.annotations.DisplayName
 import contacts.dynamic.annotations.DynamicallyInvokable
-import contacts.dynamic.annotations.Optional
 import kotlin.reflect.*
 import kotlin.reflect.full.*
 import kotlin.reflect.jvm.jvmErasure
@@ -159,12 +158,12 @@ object DynamicObjectFactory {
                     originalName = param.name
                         ?: raise(Error.DynamicInvocationFailed("Parameter $param is expected to have a name")),
                     type = param.type.jvmErasure,
-                    isOptional = param.annotations.any { it is Optional },
+                    isOptional = param.type.isMarkedNullable,
                 )
             }
 
     context(RaiseDynamicInvocationFailed)
-    fun KAnnotatedElement.getDisplayName(): String {
+    private fun KAnnotatedElement.getDisplayName(): String {
         val displayName = annotations.filterIsInstance<DisplayName>().singleOrNull()?.name
 
         if (displayName != null) {

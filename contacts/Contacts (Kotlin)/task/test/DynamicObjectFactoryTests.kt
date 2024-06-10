@@ -8,17 +8,18 @@ import assertk.assertions.isNull
 import assertk.assertions.prop
 import assertk.assertions.support.expected
 import contacts.Error
-import contacts.Record
+import contacts.domain.Person
+import contacts.domain.Record
+import contacts.domain.toNonEmpty
+import contacts.domain.toPhoneNumber
 import contacts.dynamic.DynamicObjectFactory
 import contacts.dynamic.PropertyName
-import contacts.toNonEmpty
-import contacts.toPhoneNumber
 import org.junit.jupiter.api.Test
 
 class DynamicObjectFactoryTests {
     @Test
     fun `Create new Record based on valid input`() {
-        val result = DynamicObjectFactory.createNew<Record> {
+        val result = DynamicObjectFactory.createNew<Person> {
             when (propertyName) {
                 "name" -> "SomeName"
                 "surname" -> "SomeSurname"
@@ -45,7 +46,7 @@ class DynamicObjectFactoryTests {
 
     @Test
     fun `Create new Record with invalid phone number (Optional)`() {
-        val result = DynamicObjectFactory.createNew<Record> {
+        val result = DynamicObjectFactory.createNew<Person> {
             when (propertyName) {
                 "name" -> "SomeName"
                 "surname" -> "SomeSurname"
@@ -54,14 +55,14 @@ class DynamicObjectFactoryTests {
             }
         }
 
-        fun Assert<Ior<Error, Record>>.isBoth() = given {
+        fun Assert<Ior<Error, Person>>.isBoth() = given {
             when (it) {
                 is Ior.Both -> {
                     assertThat(it.leftValue.displayText).isEqualTo("Wrong number format!")
                     assertThat(it.rightValue).all {
-                        prop(Record::name).isEqualTo("SomeName".toNonEmpty())
-                        prop(Record::surname).isEqualTo("SomeSurname".toNonEmpty())
-                        prop(Record::phoneNumber).isNull()
+                        prop(Person::name).isEqualTo("SomeName".toNonEmpty())
+                        prop(Person::surname).isEqualTo("SomeSurname".toNonEmpty())
+                        prop(Person::phoneNumber).isNull()
                     }
                 }
 
@@ -75,7 +76,7 @@ class DynamicObjectFactoryTests {
 
     @Test
     fun `Fail to create new Record because of invalid name`() {
-        val result = DynamicObjectFactory.createNew<Record> {
+        val result = DynamicObjectFactory.createNew<Person> {
             when (propertyName) {
                 "name" -> ""
                 "surname" -> "SomeSurname"
@@ -84,7 +85,7 @@ class DynamicObjectFactoryTests {
             }
         }
 
-        fun Assert<Ior<Error, Record>>.isLeft() = given {
+        fun Assert<Ior<Error, Person>>.isLeft() = given {
             when (it) {
                 is Ior.Right, is Ior.Both -> expected("Record creation is expected to fail")
                 is Ior.Left -> assertThat(it.value.displayText).isEqualTo("Value cannot be empty")
@@ -99,16 +100,16 @@ class DynamicObjectFactoryTests {
 
     @Test
     fun `Copy object with updated property`() {
-        val old = Record("FirstName".toNonEmpty(), "LastName".toNonEmpty(), phoneNumber = null)
+        val old = Person("FirstName".toNonEmpty(), "LastName".toNonEmpty(), phoneNumber = null)
         val result = DynamicObjectFactory.copy(old, "number") { "+0 (123) 456 789" }
 
-        fun Assert<Either<Error, Record>>.isRight() = given {
+        fun Assert<Either<Error, Person>>.isRight() = given {
             when (it) {
                 is Either.Right -> {
                     assertThat(it.value).all {
-                        prop(Record::name).isEqualTo("FirstName".toNonEmpty())
-                        prop(Record::surname).isEqualTo("LastName".toNonEmpty())
-                        prop(Record::phoneNumber).isEqualTo("+0 (123) 456 789".toPhoneNumber())
+                        prop(Person::name).isEqualTo("FirstName".toNonEmpty())
+                        prop(Person::surname).isEqualTo("LastName".toNonEmpty())
+                        prop(Person::phoneNumber).isEqualTo("+0 (123) 456 789".toPhoneNumber())
                     }
                 }
 
