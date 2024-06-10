@@ -1,3 +1,4 @@
+import arrow.core.Either
 import arrow.core.Ior
 import assertk.Assert
 import assertk.all
@@ -8,14 +9,16 @@ import assertk.assertions.prop
 import assertk.assertions.support.expected
 import contacts.Error
 import contacts.Record
-import contacts.dynamic.ObjectInitializer
+import contacts.dynamic.DynamicObjectFactory
+import contacts.dynamic.PropertyName
 import contacts.toNonEmpty
+import contacts.toPhoneNumber
 import org.junit.jupiter.api.Test
 
-class ObjectInitializerTests {
+class DynamicObjectFactoryTests {
     @Test
     fun `Create new Record based on valid input`() {
-        val result = ObjectInitializer.createNew<Record> {
+        val result = DynamicObjectFactory.createNew<Record> {
             when (propertyName) {
                 "name" -> "SomeName"
                 "surname" -> "SomeSurname"
@@ -42,7 +45,7 @@ class ObjectInitializerTests {
 
     @Test
     fun `Create new Record with invalid phone number (Optional)`() {
-        val result = ObjectInitializer.createNew<Record> {
+        val result = DynamicObjectFactory.createNew<Record> {
             when (propertyName) {
                 "name" -> "SomeName"
                 "surname" -> "SomeSurname"
@@ -72,7 +75,7 @@ class ObjectInitializerTests {
 
     @Test
     fun `Fail to create new Record because of invalid name`() {
-        val result = ObjectInitializer.createNew<Record> {
+        val result = DynamicObjectFactory.createNew<Record> {
             when (propertyName) {
                 "name" -> ""
                 "surname" -> "SomeSurname"
@@ -91,6 +94,28 @@ class ObjectInitializerTests {
         assertThat(result).isLeft()
     }
 
-    private fun unknownProperty(propertyName: String): Nothing =
+    private fun unknownProperty(propertyName: PropertyName): Nothing =
         throw IllegalArgumentException("Unknown property: $propertyName")
+
+    @Test
+    fun `Copy object with updated property`() {
+        val old = Record("FirstName".toNonEmpty(), "LastName".toNonEmpty(), phoneNumber = null)
+        val result = DynamicObjectFactory.copy(old, "number") { "+0 (123) 456 789" }
+
+        fun Assert<Either<Error, Record>>.isRight() = given {
+            when (it) {
+                is Either.Right -> {
+                    assertThat(it.value).all {
+                        prop(Record::name).isEqualTo("FirstName".toNonEmpty())
+                        prop(Record::surname).isEqualTo("LastName".toNonEmpty())
+                        prop(Record::phoneNumber).isEqualTo("+0 (123) 456 789".toPhoneNumber())
+                    }
+                }
+
+                is Either.Left -> expected("Object modification failed: ${it.value.displayText}")
+            }
+        }
+
+        assertThat(result).isRight()
+    }
 }

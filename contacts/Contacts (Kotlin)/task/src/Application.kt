@@ -6,7 +6,7 @@ import arrow.core.left
 import arrow.core.raise.either
 import arrow.core.right
 import contacts.Error.InvalidInput
-import contacts.dynamic.ObjectInitializer
+import contacts.dynamic.DynamicObjectFactory
 
 data class IO(val read: () -> String, val write: (CharSequence) -> Unit)
 
@@ -42,7 +42,7 @@ class Application(private val io: IO) {
 
     context(RaiseAnyError)
     private fun addRecord() {
-        val recordIor = ObjectInitializer.createNew<Record> {
+        val recordIor = DynamicObjectFactory.createNew<Record> {
             io.write(Requests.propertyValue(propertyName))
             io.read()
         }

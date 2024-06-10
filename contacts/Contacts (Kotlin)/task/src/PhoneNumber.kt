@@ -48,3 +48,8 @@ value class PhoneNumber private constructor(private val value: String) {
         private fun String.inParens() = "\\($this\\)"
     }
 }
+
+fun String.toPhoneNumber(): PhoneNumber = when (val either = PhoneNumber(this)) {
+    is Either.Right -> either.value
+    is Either.Left -> throw IllegalArgumentException("Wrong number format!")
+}
