@@ -63,7 +63,7 @@ class Application(private val io: IO) {
             is Ior.Left -> raise(recordIor.value)
         }
 
-        phoneBook.add(newRecord as Record)
+        phoneBook.add(newRecord)
         io.write(Responses.recordAdded())
     }
 
@@ -117,10 +117,10 @@ class Application(private val io: IO) {
     context(RaiseAnyError)
     private fun requestRecordType(): KClass<out Record> {
         val recordCases = DynamicObjectFactory.casesOf<Record>()
-        io.write(Requests.recordType(recordCases.keys))
+        io.write(Requests.recordType(recordCases.map { it.first }))
         val input = io.read().lowercase().trim()
-        val targetType = recordCases[input] ?: raise(Errors.unknownRecordType(input))
-        return targetType
+        val targetType = recordCases.find { it.first == input } ?: raise(Errors.unknownRecordType(input))
+        return targetType.second
     }
 
     context(RaiseInvalidInput)

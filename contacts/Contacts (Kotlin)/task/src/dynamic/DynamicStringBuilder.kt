@@ -1,20 +1,20 @@
 package contacts.dynamic
 
 import contacts.RaiseAnyError
-import kotlin.reflect.full.memberProperties
+import kotlin.reflect.full.declaredMemberProperties
 
 object DynamicStringBuilder {
     context(RaiseAnyError)
-    inline fun <reified T : Any> asString(obj: T): String {
-        val namesToProps = T::class.memberProperties.associateBy { it.name }
+    fun asString(obj: Any): String {
+        val namesToProps = obj::class.declaredMemberProperties.associateBy { it.name }
 
         return DynamicObjectFactory
             .propsOf(obj::class)
             .bind()
-            .joinToString {
+            .joinToString(separator = "\n") {
                 val property = namesToProps.getValue(it.originalName)
-                val displayName = it.displayName.replaceFirstChar { it.uppercase() }
-                val value = property.getter.invoke(obj)?.toString() ?: "[no data]"
+                val displayName = it.displayName.replaceFirstChar { c -> c.uppercase() }
+                val value = property.getter.call(obj)?.toString() ?: "[no data]"
                 "$displayName: $value"
             }
     }

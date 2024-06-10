@@ -11,6 +11,7 @@ import contacts.RaiseAnyError
 import contacts.RaiseDynamicInvocationFailed
 import contacts.dynamic.DynamicObjectFactory.Invoker
 import contacts.dynamic.annotations.DisplayName
+import contacts.dynamic.annotations.DisplayOrder
 import contacts.dynamic.annotations.DynamicallyInvokable
 import kotlin.reflect.*
 import kotlin.reflect.full.*
@@ -20,11 +21,13 @@ typealias ValueReader = DynamicObjectFactory.PropOrParamMetadata.PropertyContext
 typealias PropertyName = String
 
 object DynamicObjectFactory {
-    fun createNew(type: KClass<*>, valueReader: ValueReader): Ior<Error, Any> =
+    fun <T : Any> createNew(type: KClass<T>, valueReader: ValueReader): Ior<Error, T> =
         ior(Error::combine) {
             val (invoker, params) = getDynamicObjectInvoker(type).bind()
             val invokerArgValues = getInvokerArgValues(params, valueReader).bind()
-            invoker.invoke(invokerArgValues)
+
+            @Suppress("UNCHECKED_CAST")
+            invoker.invoke(invokerArgValues) as T
         }
 
     fun propsOf(type: KClass<*>): Either<Error, List<PropOrParamMetadata>> = either {
@@ -32,19 +35,21 @@ object DynamicObjectFactory {
     }
 
     context(RaiseDynamicInvocationFailed)
-    inline fun <reified T : Any> casesOf() = T::class.sealedSubclasses.associateBy { it.getDisplayName() }
+    inline fun <reified T : Any> casesOf() = T::class.sealedSubclasses
+        .map { Pair(it.getDisplayName(), it) }
+        .sortedBy { it.second.annotations.filterIsInstance<DisplayOrder>().firstOrNull()?.order ?: 0 }
 
     inline fun <reified T : Any> copy(
         entity: T,
         targetPropName: PropertyName,
         noinline valueReader: ValueReader
     ): Either<Error, T> = either {
-        if (!T::class.isData) {
+        if (!entity::class.isData) {
             return Error.DynamicInvocationFailed("Type '${T::class.simpleName}' is expected to be a data class").left()
         }
 
         Either
-            .catch { callCopyFunction(targetPropName, entity, T::class, valueReader).bind() as T }
+            .catch { callCopyFunction(targetPropName, entity, entity::class, valueReader).bind() as T }
             .mapLeft { Error.DynamicInvocationFailed(it.message ?: "Dynamic invocation failed") }
             .bind()
     }

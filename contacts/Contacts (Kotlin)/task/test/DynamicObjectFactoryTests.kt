@@ -19,7 +19,7 @@ import org.junit.jupiter.api.Test
 class DynamicObjectFactoryTests {
     @Test
     fun `Create new Record based on valid input`() {
-        val result = DynamicObjectFactory.createNew<Person> {
+        val result = DynamicObjectFactory.createNew(Person::class) {
             when (propertyName) {
                 "name" -> "SomeName"
                 "surname" -> "SomeSurname"
@@ -46,7 +46,7 @@ class DynamicObjectFactoryTests {
 
     @Test
     fun `Create new Record with invalid phone number (Optional)`() {
-        val result = DynamicObjectFactory.createNew<Person> {
+        val result = DynamicObjectFactory.createNew(Person::class) {
             when (propertyName) {
                 "name" -> "SomeName"
                 "surname" -> "SomeSurname"
@@ -76,7 +76,7 @@ class DynamicObjectFactoryTests {
 
     @Test
     fun `Fail to create new Record because of invalid name`() {
-        val result = DynamicObjectFactory.createNew<Person> {
+        val result = DynamicObjectFactory.createNew(Person::class) {
             when (propertyName) {
                 "name" -> ""
                 "surname" -> "SomeSurname"
