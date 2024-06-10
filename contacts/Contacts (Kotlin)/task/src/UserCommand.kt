@@ -2,7 +2,7 @@ package contacts
 
 import contacts.dynamic.annotations.DisplayName
 
-enum class UserAction {
+enum class UserCommand {
     @DisplayName("add")
     AddRecord,
 
@@ -27,5 +27,7 @@ enum class UserAction {
         }
 
         fun getByNameOrNull(name: String) = displayNamesToCommands[name]
+
+        fun getAllNames() = displayNamesToCommands.keys
     }
 }

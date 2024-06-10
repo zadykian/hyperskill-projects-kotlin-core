@@ -1,49 +1,131 @@
 package contacts
 
+import arrow.core.Either
+import arrow.core.Ior
+import arrow.core.left
 import arrow.core.raise.either
+import arrow.core.right
+import contacts.Error.InvalidInput
+import contacts.dynamic.ObjectInitializer
 
-data class IO(val read: () -> String, val write: (String) -> Unit)
+data class IO(val read: () -> String, val write: (CharSequence) -> Unit)
 
 class Application(private val io: IO) {
-    private val records = mutableListOf<Record>()
+    private val phoneBook = PhoneBook()
 
-    fun run() {
-        either { addContact() }.onLeft { io.write(it.displayText.toString()) }
-    }
+    tailrec fun run() {
+        either {
+            val nextCommand = requestNextCommand()
+            executeCommand(nextCommand)
+            if (nextCommand == UserCommand.ExitProgram) return@run
+        }.onLeft { io.write(it.displayText.toString()) }
 
-    context(RaiseAnyError)
-    private fun addContact() {
-        val newRecord = requestNewRecord()
-        records.add(newRecord)
-
-        io.write("")
-        io.write(Responses.RECORD_CREATED)
-        io.write(Responses.PHONE_BOOK_CREATED)
+        run()
     }
 
     context(RaiseInvalidInput)
-    private fun requestNewRecord(): Record {
-        io.write(Requests.NAME)
-        val name = io.read().toNonEmptyOrNull() ?: raise(Error.InvalidInput("First name cannot be empty"))
-
-        io.write(Requests.SURNAME)
-        val surname = io.read().toNonEmptyOrNull() ?: raise(Error.InvalidInput("Surname cannot be empty"))
-
-        io.write(Requests.PHONE_NUMBER)
-        val phoneNumber = PhoneNumber(io.read()).onLeft { io.write(it.displayText.toString()) }.bind()
-
-        return Record(name, surname, phoneNumber)
+    private fun requestNextCommand(): UserCommand {
+        io.write(Requests.command())
+        val input = io.read()
+        return UserCommand.getByNameOrNull(input) ?: raise(Errors.unknownCommand(input))
     }
 
+    context(RaiseAnyError)
+    private fun executeCommand(command: UserCommand) = when (command) {
+        UserCommand.AddRecord -> addRecord()
+        UserCommand.RemoveRecord -> removeRecord()
+        UserCommand.EditRecord -> editRecord()
+        UserCommand.DisplayRecordsCount -> displayRecordsCount()
+        UserCommand.ListAllRecords -> listAllRecords()
+        UserCommand.ExitProgram -> Unit
+    }
+
+    context(RaiseAnyError)
+    private fun addRecord() {
+        val recordIor = ObjectInitializer.createNew<Record> {
+            io.write(Requests.propertyValue(propertyName))
+            io.read()
+        }
+
+        val newRecord = when (recordIor) {
+            is Ior.Right -> recordIor.value
+            is Ior.Both -> {
+                io.write(recordIor.leftValue.displayText)
+                recordIor.rightValue
+            }
+
+            is Ior.Left -> raise(recordIor.value)
+        }
+
+        phoneBook.add(newRecord)
+        io.write(Responses.recordAdded())
+    }
+
+    context(RaiseInvalidInput)
+    private fun removeRecord() {
+        val allRecords = phoneBook.listAll()
+        if (allRecords.isEmpty()) {
+            io.write(Responses.noRecordsToRemove())
+            return
+        }
+
+        io.write(allRecords.asString())
+        io.write(Requests.selectRecord())
+
+        val recordNumber = requestNumber(1..allRecords.size).bind()
+        val recordToRemove = allRecords[recordNumber - 1]
+        phoneBook.remove(recordToRemove)
+
+        io.write(Responses.recordRemoved())
+    }
+
+    private fun editRecord() {
+        val allRecords = phoneBook.listAll()
+        if (allRecords.isEmpty()) {
+            io.write(Responses.noRecordsToEdit())
+            return
+        }
+
+        TODO()
+    }
+
+    private fun displayRecordsCount() {
+        val count = phoneBook.listAll().size
+        io.write(Responses.recordsCount(count))
+    }
+
+    private fun listAllRecords() {
+        val listAsString = phoneBook.listAll().asString()
+        io.write(listAsString)
+    }
+
+    private fun requestNumber(range: IntRange): Either<InvalidInput, Int> {
+        val input = io.read()
+        val number = input.toIntOrNull() ?: return Errors.invalidNumber(input).left()
+        return if (number in range) number.right()
+        else Errors.numberNotInRange(range).left()
+    }
+
+    private fun List<Record>.asString() =
+        mapIndexed { index, rec -> "${index + 1}. $rec" }.joinToString(separator = "\n")
 
     private object Requests {
-        const val NAME = "Enter the name of the person:"
-        const val SURNAME = "Enter the surname of the person:"
-        const val PHONE_NUMBER = "Enter the number:"
+        fun command() = "Enter action (${UserCommand.getAllNames().joinToString()}}):"
+        fun propertyValue(propertyName: String) = "Enter the ${propertyName}:"
+        fun selectRecord() = "Select a record:"
     }
 
     private object Responses {
-        const val RECORD_CREATED = "A record created!"
-        const val PHONE_BOOK_CREATED = "A Phone Book with a single record created!"
+        fun recordsCount(count: Int) = "The Phone Book has $count records."
+        fun noRecordsToEdit() = "No records to edit!"
+        fun noRecordsToRemove() = "No records to remove!"
+        fun recordAdded() = "The record added."
+        fun recordRemoved() = "The record removed!"
+    }
+
+    private object Errors {
+        fun unknownCommand(input: String) = InvalidInput("Unknown command '$input'")
+        fun invalidNumber(input: String) = InvalidInput("Invalid number: '$input'")
+        fun numberNotInRange(range: IntRange) = InvalidInput("Number should belong to range [$range]")
     }
 }

@@ -21,10 +21,10 @@ import kotlin.reflect.full.isSubtypeOf
 import kotlin.reflect.full.starProjectedType
 import kotlin.reflect.jvm.jvmErasure
 
-typealias PropertyName = String
+typealias ValueReader = ObjectInitializer.InvokerWithParams.PropertyContext.() -> String
 
 object ObjectInitializer {
-    inline fun <reified T : Any> createNew(noinline valueReader: (PropertyName) -> String): Ior<Error, T> =
+    inline fun <reified T : Any> createNew(noinline valueReader: ValueReader): Ior<Error, T> =
         ior(Error::combine) {
             val (invoker, params) = getDynamicObjectInvoker(T::class).bind()
             val invokerArgValues = getInvokerArgValues(params, valueReader).bind()
@@ -34,10 +34,10 @@ object ObjectInitializer {
     context(RaiseAnyError)
     fun getInvokerArgValues(
         params: List<InvokerWithParams.Param>,
-        valueReader: (PropertyName) -> String
+        valueReader: ValueReader
     ): Ior<Error, Array<Any?>> = ior(Error::combine) {
         val iorParams = params
-            .map { param -> getParameterValue({ valueReader(param.name) }, param) }
+            .map { param -> getParameterValue({ valueReader(param.context) }, param) }
 
         iorParams
             .bindAll()
@@ -118,7 +118,11 @@ object ObjectInitializer {
         val invoker: Invoker<*>,
         val params: List<Param>
     ) {
-        data class Param(val name: String, val type: KClass<*>, val isOptional: Boolean)
+        data class Param(val name: String, val type: KClass<*>, val isOptional: Boolean) {
+            val context = PropertyContext(name)
+        }
+
+        class PropertyContext(val propertyName: String)
     }
 
     fun interface Invoker<T : Any> {
