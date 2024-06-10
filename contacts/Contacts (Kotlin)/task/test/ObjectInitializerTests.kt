@@ -16,11 +16,11 @@ class ObjectInitializerTests {
     @Test
     fun `Create new Record based on valid input`() {
         val result = ObjectInitializer.createNew<Record> {
-            when (it) {
+            when (propertyName) {
                 "name" -> "SomeName"
                 "surname" -> "SomeSurname"
                 "number" -> "+0 (123) 456 789"
-                else -> throw IllegalArgumentException("Unknown property: $it")
+                else -> unknownProperty(propertyName)
             }
         }
 
@@ -43,11 +43,11 @@ class ObjectInitializerTests {
     @Test
     fun `Create new Record with invalid phone number (Optional)`() {
         val result = ObjectInitializer.createNew<Record> {
-            when (it) {
+            when (propertyName) {
                 "name" -> "SomeName"
                 "surname" -> "SomeSurname"
                 "number" -> "INVALID_PHONE_NUMBER"
-                else -> throw IllegalArgumentException("Unknown property: $it")
+                else -> unknownProperty(propertyName)
             }
         }
 
@@ -73,11 +73,11 @@ class ObjectInitializerTests {
     @Test
     fun `Fail to create new Record because of invalid name`() {
         val result = ObjectInitializer.createNew<Record> {
-            when (it) {
+            when (propertyName) {
                 "name" -> ""
                 "surname" -> "SomeSurname"
                 "number" -> "+0 (123) 456 789"
-                else -> throw IllegalArgumentException("Unknown property: $it")
+                else -> unknownProperty(propertyName)
             }
         }
 
@@ -90,4 +90,7 @@ class ObjectInitializerTests {
 
         assertThat(result).isLeft()
     }
+
+    private fun unknownProperty(propertyName: String): Nothing =
+        throw IllegalArgumentException("Unknown property: $propertyName")
 }
