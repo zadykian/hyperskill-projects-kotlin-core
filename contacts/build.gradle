@@ -47,6 +47,8 @@ subprojects {
 
     dependencies {
         implementation 'io.arrow-kt:arrow-core:1.2.4'
+        implementation 'org.jetbrains.kotlin:kotlin-reflect:2.0.0'
+
         testImplementation 'com.github.hyperskill:hs-test:release-SNAPSHOT'
 
         testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.0'
