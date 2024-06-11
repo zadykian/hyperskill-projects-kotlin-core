@@ -1,6 +1,7 @@
 package contacts.dynamic
 
 import contacts.RaiseAnyError
+import contacts.dynamic.DynamicObjectScanner.getProperties
 import kotlin.reflect.full.declaredMemberProperties
 
 object DynamicStringBuilder {
@@ -8,8 +9,8 @@ object DynamicStringBuilder {
     fun asString(obj: Any): String {
         val namesToProps = obj::class.declaredMemberProperties.associateBy { it.name }
 
-        return DynamicObjectFactory
-            .propsOf(obj::class)
+        return obj::class
+            .getProperties()
             .bind()
             .joinToString(separator = "\n") {
                 val property = namesToProps.getValue(it.originalName)

@@ -10,9 +10,12 @@ import contacts.Error.InvalidInput
 import contacts.domain.PhoneBook
 import contacts.domain.PhoneBookEntry
 import contacts.domain.Record
-import contacts.dynamic.DynamicObjectFactory
+import contacts.dynamic.DynamicObjectFactory.new
+import contacts.dynamic.DynamicObjectFactory.with
+import contacts.dynamic.DynamicObjectScanner.getCases
+import contacts.dynamic.DynamicObjectScanner.getProperties
 import contacts.dynamic.DynamicStringBuilder
-import contacts.dynamic.PropertyName
+import contacts.dynamic.PropOrParamMetadata
 import kotlin.reflect.KClass
 
 data class IO(val read: () -> String, val write: (CharSequence) -> Unit)
@@ -51,7 +54,7 @@ class Application(private val io: IO) {
     context(RaiseAnyError)
     private fun addRecord() {
         val targetType = requestRecordType()
-        val recordIor = DynamicObjectFactory.createNew(targetType) { requestPropertyValue(this) }
+        val recordIor = targetType.new { requestPropertyValue(this) }
 
         val newRecord = when (recordIor) {
             is Ior.Right -> recordIor.value
@@ -77,18 +80,18 @@ class Application(private val io: IO) {
     context(RaiseAnyError)
     private fun editRecord() {
         val recordToEdit = chooseExistingRecord(UserCommand.EditRecord)
-        val propertyNames = DynamicObjectFactory.propsOf(recordToEdit::class).bind().map { it.displayName }
+        val propertyNames = recordToEdit::class.getProperties().bind().map { it.displayName }
 
         io.write(Requests.recordProperty(propertyNames))
         val inputPropName = io.read().lowercase().trim()
         ensure(inputPropName in propertyNames) { Errors.invalidPropName(inputPropName) }
 
-        val editedRecord = DynamicObjectFactory.copy(recordToEdit, inputPropName) { requestPropertyValue(this) }.bind()
+        val editedRecord = recordToEdit.with(inputPropName) { requestPropertyValue(this) }.bind()
         phoneBook.replace(recordToEdit, editedRecord)
         io.write(Responses.recordUpdated())
     }
 
-    private fun requestPropertyValue(context: DynamicObjectFactory.PropOrParamMetadata.PropertyContext): String {
+    private fun requestPropertyValue(context: PropOrParamMetadata.PropertyContext): String {
         io.write(Requests.propertyValue(context.propertyName))
         return io.read()
     }
@@ -116,7 +119,7 @@ class Application(private val io: IO) {
 
     context(RaiseAnyError)
     private fun requestRecordType(): KClass<out Record> {
-        val recordCases = DynamicObjectFactory.casesOf<Record>()
+        val recordCases = Record::class.getCases()
         io.write(Requests.recordType(recordCases.map { it.first }))
         val input = io.read().lowercase().trim()
         val targetType = recordCases.find { it.first == input } ?: raise(Errors.unknownRecordType(input))
@@ -152,7 +155,7 @@ class Application(private val io: IO) {
         fun recordType(names: Iterable<String>) = "Enter the type (${names.joinToString()}):"
         fun propertyValue(propertyName: String) = "Enter the ${propertyName}:"
         fun record() = "Select a record:"
-        fun recordProperty(names: Iterable<PropertyName>) = "Select a field (${names.joinToString()}):"
+        fun recordProperty(names: Iterable<String>) = "Select a field (${names.joinToString()}):"
         fun recordInfoIndex() = "Enter index to show info:"
     }
 

@@ -27,7 +27,6 @@ value class DateSafe private constructor(private val value: LocalDate) {
     }
 }
 
-
 @JvmInline
 value class DateTimeSafe private constructor(private val value: LocalDateTime) {
     override fun toString(): String = dateTimeFormatter.format(value)
