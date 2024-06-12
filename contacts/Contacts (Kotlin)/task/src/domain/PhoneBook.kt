@@ -1,7 +1,5 @@
 package contacts.domain
 
-import arrow.core.raise.ensure
-import contacts.Error
 import contacts.RaiseInvalidInput
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -18,46 +16,15 @@ data class PhoneBookEntry(val record: Record<*>, val createdAt: LocalDateTime, v
     }
 }
 
-class PhoneBook {
-    private val entries = mutableListOf<PhoneBookEntry>()
-
-    fun add(record: Record<*>) {
-        val entry = PhoneBookEntry(record, createdAt = LocalDateTime.now(), updatedAt = LocalDateTime.now())
-        entries.add(entry)
-    }
+interface PhoneBook {
+    fun add(record: Record<*>)
 
     context(RaiseInvalidInput)
-    fun remove(record: Record<*>) {
-        val wasRemoved = entries.removeIf { it.record == record }
-        ensure(wasRemoved) { Errors.recordDoesNotExist(record) }
-    }
+    fun replace(oldRecord: Record<*>, newRecord: Record<*>): PhoneBookEntry
 
     context(RaiseInvalidInput)
-    fun replace(oldRecord: Record<*>, newRecord: Record<*>): PhoneBookEntry {
-        val oldEntry = entries.find { it.record == oldRecord }
-        ensure(oldEntry != null) { Errors.recordDoesNotExist(oldRecord) }
-        val index = entries.indexOf(oldEntry)
+    fun remove(record: Record<*>)
 
-        val newEntry = oldEntry.copy(record = newRecord, updatedAt = LocalDateTime.now())
-        entries[index] = newEntry
-        return newEntry
-    }
-
-    fun find(query: NonEmptyString): List<PhoneBookEntry> {
-        val regex = Regex(".*${query}.*", RegexOption.IGNORE_CASE)
-        return entries
-            .asSequence()
-            .filter { it.record.matches(regex) }
-            .toList()
-    }
-
-    private fun Record<*>.matches(pattern: Regex) =
-        properties.values.filterNotNull().joinToString("") { it.toString() }.matches(pattern)
-
-    fun listAll(): List<PhoneBookEntry> = entries
-
-    private object Errors {
-        fun recordDoesNotExist(record: Record<*>) =
-            Error.InvalidInput("Record '${record.toStringShort()}' doesn't exist in the Phone Book!")
-    }
+    fun find(query: NonEmptyString): List<PhoneBookEntry>
+    fun listAll(): List<PhoneBookEntry>
 }

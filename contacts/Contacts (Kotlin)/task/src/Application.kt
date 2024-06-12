@@ -10,9 +10,7 @@ import contacts.domain.*
 
 data class IO(val read: () -> String, val write: (CharSequence) -> Unit)
 
-class Application(private val io: IO) {
-    private val phoneBook = PhoneBook()
-
+class Application(private val phoneBook: PhoneBook, private val io: IO) {
     private val recordNamesToFactories = mapOf(
         "person" to {
             ior(Error::combine) {
