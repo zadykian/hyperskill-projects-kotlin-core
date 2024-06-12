@@ -4,7 +4,6 @@ import arrow.core.Either
 import arrow.core.left
 import arrow.core.right
 import contacts.Error
-import contacts.dynamic.annotations.DynamicallyInvokable
 import org.intellij.lang.annotations.Language
 
 /**
@@ -22,7 +21,6 @@ value class PhoneNumber private constructor(private val value: String) {
     override fun toString(): String = value
 
     companion object {
-        @DynamicallyInvokable
         operator fun invoke(value: String): Either<Error.InvalidInput, PhoneNumber> =
             if (PhoneRegex.pattern.matches(value)) PhoneNumber(value).right()
             else Error.InvalidInput("Wrong number format!").left()
@@ -48,9 +46,4 @@ value class PhoneNumber private constructor(private val value: String) {
 
         private fun String.inParens() = "\\($this\\)"
     }
-}
-
-fun String.toPhoneNumber(): PhoneNumber = when (val either = PhoneNumber(this)) {
-    is Either.Right -> either.value
-    is Either.Left -> throw IllegalArgumentException("Wrong number format!")
 }

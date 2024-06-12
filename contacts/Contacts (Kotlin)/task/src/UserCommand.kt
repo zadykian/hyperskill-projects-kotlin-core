@@ -1,27 +1,17 @@
 package contacts
 
-import contacts.dynamic.annotations.DisplayName
+enum class UserCommand(val displayName: String) {
+    AddRecord("add"),
 
-enum class UserCommand {
-    @DisplayName("add")
-    AddRecord,
+    RemoveRecord("remove"),
 
-    @DisplayName("remove")
-    RemoveRecord,
+    EditRecord("edit"),
 
-    @DisplayName("edit")
-    EditRecord,
+    DisplayRecordsCount("count"),
 
-    @DisplayName("count")
-    DisplayRecordsCount,
+    ShowRecordInfo("info"),
 
-    @DisplayName("info")
-    ShowRecordInfo,
-
-    @DisplayName("exit")
-    ExitProgram;
-
-    val displayName = this.declaringJavaClass.getField(name).getAnnotation(DisplayName::class.java).name
+    ExitProgram("exit");
 
     companion object {
         private val displayNamesToCommands = entries.associateBy { it.displayName }

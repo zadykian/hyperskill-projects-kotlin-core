@@ -1,70 +1,73 @@
 package contacts.domain
 
-import arrow.core.left
-import arrow.core.right
+import arrow.core.Either
+import arrow.core.raise.either
+import arrow.core.raise.ensure
 import contacts.Error
-import contacts.dynamic.annotations.DisplayName
-import contacts.dynamic.annotations.DisplayOrder
-import contacts.dynamic.annotations.DynamicallyInvokable
+import contacts.RaiseInvalidInput
+import contacts.domain.Person.Property
 
-sealed interface Record {
-    val phoneNumber: PhoneNumber?
-    fun toStringShort(): String
+typealias PropertyParser = (String) -> Either<Error.InvalidInput, Any>
+typealias Properties<T> = Map<T, Any?>
+
+sealed interface RecordProperty {
+    val displayName: String
+    val parser: PropertyParser
 }
 
-data class RecordInfo @DynamicallyInvokable constructor(
-    @DisplayName("time created") val createdAt: DateTimeSafe,
-    @DisplayName("time last edit") val updatedAt: DateTimeSafe,
-) {
-    fun updatedNow() = copy(updatedAt = DateTimeSafe.now())
+sealed class Record<T : RecordProperty>(val properties: Properties<T>) {
+    abstract fun toStringShort(): String
 
-    companion object {
-        fun newCreated() = RecordInfo(DateTimeSafe.now(), DateTimeSafe.now())
-    }
-}
-
-enum class Gender {
-    @DisplayName("M")
-    Male,
-
-    @DisplayName("F")
-    Female;
-
-    companion object {
-        private val namesToValues = entries.associateBy {
-            it.declaringJavaClass.getField(it.name).getAnnotation(DisplayName::class.java).name
+    override fun toString() = buildString {
+        properties.forEach {
+            val propertyName = it.key.displayName.replaceFirstChar { c -> c.uppercase() }
+            appendLine("${propertyName}: ${it.value?.toString() ?: "[no data]"}")
         }
-
-        @DynamicallyInvokable
-        operator fun invoke(value: String) =
-            try {
-                valueOf(value).right()
-            } catch (e: Exception) {
-                namesToValues[value]?.right() ?: Error.InvalidInput("Invalid gender string: '$value'").left()
-            }
     }
 }
 
-@Suppress("unused")
-@DisplayName("person")
-@DisplayOrder(1)
-data class Person @DynamicallyInvokable constructor(
-    @DisplayName("name") val name: NonEmptyString,
-    @DisplayName("surname") val surname: NonEmptyString,
-    @DisplayName("birth date") val birthDate: DateSafe? = null,
-    @DisplayName("gender") val gender: Gender? = null,
-    @DisplayName("number") override val phoneNumber: PhoneNumber? = null,
-) : Record {
-    override fun toStringShort() = "$name $surname"
+class Person private constructor(properties: Properties<Property>) : Record<Property>(properties) {
+    override fun toStringShort() = "${properties[Property.Name]} ${properties[Property.Surname]}"
+
+    @Suppress("unused")
+    enum class Property(override val displayName: String, override val parser: PropertyParser) : RecordProperty {
+        Name("name", { NonEmptyString(it) }),
+        Surname("surname", { NonEmptyString(it) }),
+        BirthDate("birth date", { DateSafe(it) }),
+        Gender("gender", { Gender(it) }),
+        PhoneNumber("number", { PhoneNumber(it) }),
+    }
+
+    companion object {
+        operator fun invoke(properties: Properties<Property>) = either {
+            properties.ensureContains(Property.Name, Property.Surname)
+            Person(properties)
+        }
+    }
 }
 
-@Suppress("unused")
-@DisplayName("organization")
-@DisplayOrder(2)
-data class Organization @DynamicallyInvokable constructor(
-    @DisplayName("organization name") val name: NonEmptyString,
-    @DisplayName("address") val address: NonEmptyString?,
-    @DisplayName("number") override val phoneNumber: PhoneNumber?,
-) : Record {
-    override fun toStringShort() = name.toString()
+class Organization private constructor(properties: Properties<Property>) : Record<Organization.Property>(properties) {
+    override fun toStringShort() = "${properties[Property.Name]}"
+
+    @Suppress("unused")
+    enum class Property(override val displayName: String, override val parser: PropertyParser) : RecordProperty {
+        Name("organization name", { NonEmptyString(it) }),
+        Address("address", { NonEmptyString(it) }),
+        PhoneNumber("number", { PhoneNumber(it) }),
+    }
+
+    companion object {
+        operator fun invoke(properties: Properties<Property>) = either {
+            properties.ensureContains(Property.Name)
+            Organization(properties)
+        }
+    }
+}
+
+context(RaiseInvalidInput)
+private fun <T : RecordProperty> Properties<T>.ensureContains(vararg properties: T) {
+    val notProvided = properties.filter { this[it] == null }
+    ensure(notProvided.isEmpty()) {
+        Error.InvalidInput("Required properties [${notProvided.joinToString()}] are not provided")
+    }
 }

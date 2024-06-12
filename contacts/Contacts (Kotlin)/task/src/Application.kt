@@ -4,24 +4,30 @@ import arrow.core.Either
 import arrow.core.Ior
 import arrow.core.left
 import arrow.core.raise.either
-import arrow.core.raise.ensure
+import arrow.core.raise.ior
 import arrow.core.right
 import contacts.Error.InvalidInput
-import contacts.domain.PhoneBook
-import contacts.domain.PhoneBookEntry
-import contacts.domain.Record
-import contacts.dynamic.DynamicObjectFactory.new
-import contacts.dynamic.DynamicObjectFactory.with
-import contacts.dynamic.DynamicObjectScanner.getCases
-import contacts.dynamic.DynamicObjectScanner.getProperties
-import contacts.dynamic.DynamicStringBuilder
-import contacts.dynamic.PropOrParamMetadata
-import kotlin.reflect.KClass
+import contacts.domain.*
 
 data class IO(val read: () -> String, val write: (CharSequence) -> Unit)
 
 class Application(private val io: IO) {
     private val phoneBook = PhoneBook()
+
+    private val recordNamesToFactories = mapOf(
+        "person" to {
+            ior(Error::combine) {
+                val properties = requestPropertyValues<Person.Property>().bind()
+                Person(properties).bind()
+            }
+        },
+        "organization" to {
+            ior(Error::combine) {
+                val properties = requestPropertyValues<Organization.Property>().bind()
+                Organization(properties).bind()
+            }
+        }
+    )
 
     tailrec fun run() {
         either {
@@ -53,10 +59,12 @@ class Application(private val io: IO) {
 
     context(RaiseAnyError)
     private fun addRecord() {
-        val targetType = requestRecordType()
-        val recordIor = targetType.new { requestPropertyValue(this) }
+        val recordCases = recordNamesToFactories.keys
+        io.write(Requests.recordType(recordCases))
+        val input = io.read().lowercase().trim()
+        val recordFactory = recordNamesToFactories[input] ?: raise(Errors.unknownRecordType(input))
 
-        val newRecord = when (recordIor) {
+        val newRecord = when (val recordIor = recordFactory()) {
             is Ior.Right -> recordIor.value
             is Ior.Both -> {
                 io.write(recordIor.leftValue.displayText)
@@ -70,30 +78,64 @@ class Application(private val io: IO) {
         io.write(Responses.recordAdded())
     }
 
+    private inline fun <reified T> requestPropertyValues() where T : RecordProperty, T : Enum<T> =
+        ior(Error::combine) {
+            enumValues<T>()
+                .map { enum -> consumePropertyFromUser<T>(enum).map { Pair(enum, it) } }
+                .bindAll()
+                .toMap()
+        }
+
+    private inline fun <reified T> consumePropertyFromUser(
+        property: T
+    ): Ior<InvalidInput, Any?> where T : RecordProperty {
+        io.write(Requests.propertyValue(property.displayName))
+        val input = io.read()
+        return when (val parsed = property.parser(input)) {
+            is Either.Right -> Ior.Right(parsed.value)
+            is Either.Left -> Ior.Both(Warnings.invalidProperty(property.displayName), null)
+        }
+    }
+
     context(RaiseInvalidInput)
     private fun removeRecord() {
-        val recordToRemove = chooseExistingRecord(UserCommand.RemoveRecord)
+        val recordToRemove = chooseExistingEntry(UserCommand.RemoveRecord).record
         phoneBook.remove(recordToRemove)
         io.write(Responses.recordRemoved())
     }
 
-    context(RaiseAnyError)
+    context(RaiseInvalidInput)
     private fun editRecord() {
-        val recordToEdit = chooseExistingRecord(UserCommand.EditRecord)
-        val propertyNames = recordToEdit::class.getProperties().bind().map { it.displayName }
+        val recordToEdit = chooseExistingEntry(UserCommand.EditRecord).record
 
-        io.write(Requests.recordProperty(propertyNames))
-        val inputPropName = io.read().lowercase().trim()
-        ensure(inputPropName in propertyNames) { Errors.invalidPropName(inputPropName) }
+        val editedRecord = when (recordToEdit) {
+            is Person -> Person(getUpdatedProps(recordToEdit)).bind()
+            is Organization -> Organization(getUpdatedProps(recordToEdit)).bind()
+        }
 
-        val editedRecord = recordToEdit.with(inputPropName) { requestPropertyValue(this) }.bind()
         phoneBook.replace(recordToEdit, editedRecord)
         io.write(Responses.recordUpdated())
     }
 
-    private fun requestPropertyValue(context: PropOrParamMetadata.PropertyContext): String {
-        io.write(Requests.propertyValue(context.propertyName))
-        return io.read()
+    context(RaiseInvalidInput)
+    private inline fun <reified T> getUpdatedProps(recordToEdit: Record<T>): Properties<T>
+            where T : RecordProperty, T : Enum<T> {
+        val byDisplayName = enumValues<T>().associateBy { it.displayName }
+        io.write(Requests.recordProperty(byDisplayName.keys))
+        val inputPropName = io.read().lowercase().trim()
+        val property = byDisplayName[inputPropName] ?: raise(Errors.invalidPropName(inputPropName))
+
+        val newPropertyValue = when (val propIor = consumePropertyFromUser(property)) {
+            is Ior.Right -> propIor.value
+            is Ior.Both -> {
+                io.write(propIor.leftValue.displayText)
+                propIor.rightValue
+            }
+
+            is Ior.Left -> raise(propIor.value)
+        }
+
+        return recordToEdit.properties + (property to newPropertyValue)
     }
 
     private fun displayRecordsCount() {
@@ -103,41 +145,22 @@ class Application(private val io: IO) {
 
     context(RaiseAnyError)
     private fun showRecordInfo() {
-        val allEntries = phoneBook.listAll()
-        val listAsString = allEntries.asBriefList()
-        io.write(listAsString)
-
-        io.write(Requests.recordInfoIndex())
-        val number = requestNumber(1..allEntries.size).bind()
-        val targetEntry = allEntries[number - 1]
-
-        val recordString = DynamicStringBuilder.asString(targetEntry.record)
-        io.write(recordString)
-        val recordInfoString = DynamicStringBuilder.asString(targetEntry.info)
-        io.write(recordInfoString)
-    }
-
-    context(RaiseAnyError)
-    private fun requestRecordType(): KClass<out Record> {
-        val recordCases = Record::class.getCases()
-        io.write(Requests.recordType(recordCases.map { it.first }))
-        val input = io.read().lowercase().trim()
-        val targetType = recordCases.find { it.first == input } ?: raise(Errors.unknownRecordType(input))
-        return targetType.second
+        val entry = chooseExistingEntry(UserCommand.ShowRecordInfo)
+        io.write(entry.toString())
     }
 
     context(RaiseInvalidInput)
-    private fun chooseExistingRecord(currentCommand: UserCommand): Record {
-        val allRecords = phoneBook.listAll()
-        if (allRecords.isEmpty()) {
+    private fun chooseExistingEntry(currentCommand: UserCommand): PhoneBookEntry {
+        val allEntries = phoneBook.listAll()
+        if (allEntries.isEmpty()) {
             raise(Errors.noRecordsTo(currentCommand))
         }
 
-        io.write(allRecords.asBriefList())
+        io.write(allEntries.asBriefList())
         io.write(Requests.record())
 
-        val recordNumber = requestNumber(1..allRecords.size).bind()
-        return allRecords[recordNumber - 1].record
+        val entryNumber = requestNumber(1..allEntries.size).bind()
+        return allEntries[entryNumber - 1]
     }
 
     private fun requestNumber(range: IntRange): Either<InvalidInput, Int> {
@@ -156,7 +179,6 @@ class Application(private val io: IO) {
         fun propertyValue(propertyName: String) = "Enter the ${propertyName}:"
         fun record() = "Select a record:"
         fun recordProperty(names: Iterable<String>) = "Select a field (${names.joinToString()}):"
-        fun recordInfoIndex() = "Enter index to show info:"
     }
 
     private object Responses {
@@ -165,6 +187,10 @@ class Application(private val io: IO) {
         fun recordAdded() = "The record added."
         fun recordRemoved() = "The record removed!"
         fun recordUpdated() = "The record updated!"
+    }
+
+    private object Warnings {
+        fun invalidProperty(propertyName: String) = InvalidInput("Bad $propertyName!")
     }
 
     private object Errors {
