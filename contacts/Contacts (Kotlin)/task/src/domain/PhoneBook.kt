@@ -44,8 +44,15 @@ class PhoneBook {
     }
 
     fun find(query: NonEmptyString): List<PhoneBookEntry> {
-        TODO()
+        val regex = Regex(".*${query}.*", RegexOption.IGNORE_CASE)
+        return entries
+            .asSequence()
+            .filter { it.record.matches(regex) }
+            .toList()
     }
+
+    private fun Record<*>.matches(pattern: Regex) =
+        properties.values.filterNotNull().joinToString("") { it.toString() }.matches(pattern)
 
     fun listAll(): List<PhoneBookEntry> = entries
 
