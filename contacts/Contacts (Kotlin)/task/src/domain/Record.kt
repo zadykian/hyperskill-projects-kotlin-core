@@ -33,7 +33,7 @@ class Person private constructor(properties: Properties<Property>) : Record<Prop
     enum class Property(override val displayName: String, override val parser: PropertyParser) : RecordProperty {
         Name("name", { NonEmptyString(it) }),
         Surname("surname", { NonEmptyString(it) }),
-        BirthDate("birth date", { DateSafe(it) }),
+        BirthDate("birth date", { FormattedLocalDate(it) }),
         Gender("gender", { Gender(it) }),
         PhoneNumber("number", { PhoneNumber(it) }),
     }

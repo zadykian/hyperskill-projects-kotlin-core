@@ -3,12 +3,18 @@ package contacts.domain
 import arrow.core.raise.ensure
 import contacts.Error
 import contacts.RaiseInvalidInput
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
-data class PhoneBookEntry(val record: Record<*>, val createdAt: DateTimeSafe, val updatedAt: DateTimeSafe) {
+data class PhoneBookEntry(val record: Record<*>, val createdAt: LocalDateTime, val updatedAt: LocalDateTime) {
     override fun toString() = buildString {
         append(record)
-        append("Time created: ").appendLine(createdAt)
-        append("Time last edit: ").appendLine(updatedAt)
+        append("Time created: ").appendLine(dateTimeFormatter.format(createdAt))
+        append("Time last edit: ").appendLine(dateTimeFormatter.format(updatedAt))
+    }
+
+    companion object {
+        private val dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm")
     }
 }
 
@@ -16,7 +22,7 @@ class PhoneBook {
     private val entries = mutableListOf<PhoneBookEntry>()
 
     fun add(record: Record<*>) {
-        val entry = PhoneBookEntry(record, createdAt = DateTimeSafe.now(), updatedAt = DateTimeSafe.now())
+        val entry = PhoneBookEntry(record, createdAt = LocalDateTime.now(), updatedAt = LocalDateTime.now())
         entries.add(entry)
     }
 
@@ -32,7 +38,7 @@ class PhoneBook {
         ensure(oldEntry != null) { Errors.recordDoesNotExist(oldRecord) }
         val index = entries.indexOf(oldEntry)
 
-        val newEntry = oldEntry.copy(record = newRecord, updatedAt = DateTimeSafe.now())
+        val newEntry = oldEntry.copy(record = newRecord, updatedAt = LocalDateTime.now())
         entries[index] = newEntry
     }
 

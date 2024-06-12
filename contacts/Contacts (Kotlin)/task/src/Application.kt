@@ -174,7 +174,7 @@ class Application(private val io: IO) {
         mapIndexed { index, rec -> "${index + 1}. ${rec.record.toStringShort()}" }.joinToString(separator = "\n")
 
     private object Requests {
-        fun command() = "Enter action (${UserCommand.getAllNames().joinToString()}}):"
+        fun command() = "Enter action (${UserCommand.getAllNames().joinToString()}):"
         fun recordType(names: Iterable<String>) = "Enter the type (${names.joinToString()}):"
         fun propertyValue(propertyName: String) = "Enter the ${propertyName}:"
         fun record() = "Select a record:"
