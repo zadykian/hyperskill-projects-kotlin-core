@@ -2,10 +2,9 @@ package contacts
 
 import arrow.core.Either
 import arrow.core.Ior
-import arrow.core.left
 import arrow.core.raise.either
 import arrow.core.raise.ior
-import arrow.core.right
+import contacts.Error.ApplicationError
 import contacts.Error.InvalidInput
 import contacts.domain.*
 
@@ -29,36 +28,78 @@ class Application(private val io: IO) {
         }
     )
 
-    tailrec fun run() {
-        either {
-            val nextCommand = requestNextCommand()
-            executeCommand(nextCommand)
-            if (nextCommand == UserCommand.ExitProgram) return@run
-        }.onLeft { io.write(it.displayText.toString()) }
+    fun run() {
+        val statesSequence = generateSequence<AppState>(AppState.MainMenu) {
+            when (val next = either { runIteration(it) }) {
+                is Either.Right -> next.value
+                is Either.Left -> {
+                    io.write(next.value.displayText)
+                    AppState.MainMenu
+                }
+            }
+        }
 
-        io.write(Responses.commandSeparator())
-        run()
+        statesSequence.firstOrNull { it is AppState.Stopped }
+    }
+
+    context(RaiseAnyError)
+    private fun runIteration(currentState: AppState): AppState {
+        if (currentState.availableActions.isEmpty()) {
+            return AppState.Stopped
+        }
+
+        val (nextAction, input) = selectNextAction(currentState)
+
+        val nextState = when (nextAction) {
+            Action.AddRecord -> addRecord()
+            Action.DisplayRecordsCount -> displayRecordsCount()
+            Action.SearchRecords,
+            Action.SearchAgain -> executeSearchQuery()
+
+            Action.SelectRecord -> selectRecord(currentState, input)
+            Action.ListRecords -> listRecords()
+            Action.EditRecord -> editRecord(currentState)
+            Action.DeleteRecord -> deleteRecord(currentState)
+
+            Action.GoBack,
+            Action.ReturnToMainMenu -> AppState.MainMenu
+
+            Action.ExitApp -> AppState.Stopped
+        }
+
+        io.write(Responses.actionSeparator())
+        return nextState
     }
 
     context(RaiseInvalidInput)
-    private fun requestNextCommand(): UserCommand {
-        io.write(Requests.command())
-        val input = io.read()
-        return UserCommand.getByNameOrNull(input) ?: raise(Errors.unknownCommand(input))
+    private fun selectNextAction(state: AppState): Pair<Action, String> {
+        val actionNames = state.availableActions.associateBy { it.displayName.trim() }
+        io.write(Requests.action(state.displayName, actionNames.keys))
+        val input = io.read().trim().lowercase()
+
+        if (Action.SelectRecord in state.availableActions
+            && input.toIntOrNull() != null
+        ) {
+            return Pair(Action.SelectRecord, input)
+        }
+
+        return actionNames[input]?.let { Pair(it, input) } ?: raise(Errors.unknownAction(input))
+    }
+
+    private fun listRecords(): AppState {
+        val allEntries = phoneBook.listAll()
+
+        if (allEntries.isEmpty()) {
+            io.write(Responses.recordsCount(0))
+            return AppState.MainMenu
+        }
+
+        io.write(allEntries.asBriefList())
+        return AppState.ShowedAllRecords(allEntries)
     }
 
     context(RaiseAnyError)
-    private fun executeCommand(command: UserCommand) = when (command) {
-        UserCommand.AddRecord -> addRecord()
-        UserCommand.RemoveRecord -> removeRecord()
-        UserCommand.EditRecord -> editRecord()
-        UserCommand.DisplayRecordsCount -> displayRecordsCount()
-        UserCommand.ShowRecordInfo -> showRecordInfo()
-        UserCommand.ExitProgram -> Unit
-    }
-
-    context(RaiseAnyError)
-    private fun addRecord() {
+    private fun addRecord(): AppState {
         val recordCases = recordNamesToFactories.keys
         io.write(Requests.recordType(recordCases))
         val input = io.read().lowercase().trim()
@@ -76,6 +117,7 @@ class Application(private val io: IO) {
 
         phoneBook.add(newRecord)
         io.write(Responses.recordAdded())
+        return AppState.MainMenu
     }
 
     private inline fun <reified T> requestPropertyValues() where T : RecordProperty, T : Enum<T> =
@@ -98,23 +140,64 @@ class Application(private val io: IO) {
     }
 
     context(RaiseInvalidInput)
-    private fun removeRecord() {
-        val recordToRemove = chooseExistingEntry(UserCommand.RemoveRecord).record
-        phoneBook.remove(recordToRemove)
-        io.write(Responses.recordRemoved())
+    private fun executeSearchQuery(): AppState {
+        io.write(Requests.searchQuery())
+        val searchQuery = NonEmptyString(io.read()).bind()
+        val searchResults = phoneBook.find(searchQuery)
+        io.write(Responses.foundResults(searchResults.size))
+        io.write(searchResults.asBriefList())
+        return AppState.SearchCompleted(searchResults)
     }
 
-    context(RaiseInvalidInput)
-    private fun editRecord() {
-        val recordToEdit = chooseExistingEntry(UserCommand.EditRecord).record
+    context(RaiseAnyError)
+    private fun selectRecord(
+        currentState: AppState,
+        input: String
+    ): AppState {
+        if (currentState !is AppState.HasPhoneBookEntries) {
+            raise(Errors.invalidAction(Action.SelectRecord, currentState))
+        }
+
+        val number = input.toIntOrNull() ?: raise(Errors.invalidNumber(input))
+
+        val range = 1..currentState.visibleEntries.size
+        val recordNumber = if (number in range) number else raise(Errors.numberNotInRange(range))
+
+        val selectedEntry = currentState.visibleEntries[recordNumber - 1]
+        io.write(selectedEntry.toString())
+        return AppState.RecordSelected(selectedEntry)
+    }
+
+    context(RaiseAnyError)
+    private fun deleteRecord(currentState: AppState): AppState {
+        if (currentState !is AppState.RecordSelected) {
+            raise(Errors.invalidAction(Action.DeleteRecord, currentState))
+        }
+
+        val recordToRemove = currentState.selected.record
+        phoneBook.remove(recordToRemove)
+        io.write(Responses.recordRemoved())
+        return AppState.MainMenu
+    }
+
+    context(RaiseAnyError)
+    private fun editRecord(currentState: AppState): AppState {
+        if (currentState !is AppState.RecordSelected) {
+            raise(Errors.invalidAction(Action.DeleteRecord, currentState))
+        }
+
+        val recordToEdit = currentState.selected.record
 
         val editedRecord = when (recordToEdit) {
             is Person -> Person(getUpdatedProps(recordToEdit)).bind()
             is Organization -> Organization(getUpdatedProps(recordToEdit)).bind()
         }
 
-        phoneBook.replace(recordToEdit, editedRecord)
+        val newEntry = phoneBook.replace(recordToEdit, editedRecord)
         io.write(Responses.recordUpdated())
+        io.write(newEntry.toString())
+
+        return AppState.RecordSelected(newEntry)
     }
 
     context(RaiseInvalidInput)
@@ -138,55 +221,33 @@ class Application(private val io: IO) {
         return recordToEdit.properties + (property to newPropertyValue)
     }
 
-    private fun displayRecordsCount() {
+    private fun displayRecordsCount(): AppState {
         val count = phoneBook.listAll().size
         io.write(Responses.recordsCount(count))
-    }
-
-    context(RaiseAnyError)
-    private fun showRecordInfo() {
-        val entry = chooseExistingEntry(UserCommand.ShowRecordInfo)
-        io.write(entry.toString())
-    }
-
-    context(RaiseInvalidInput)
-    private fun chooseExistingEntry(currentCommand: UserCommand): PhoneBookEntry {
-        val allEntries = phoneBook.listAll()
-        if (allEntries.isEmpty()) {
-            raise(Errors.noRecordsTo(currentCommand))
-        }
-
-        io.write(allEntries.asBriefList())
-        io.write(Requests.record())
-
-        val entryNumber = requestNumber(1..allEntries.size).bind()
-        return allEntries[entryNumber - 1]
-    }
-
-    private fun requestNumber(range: IntRange): Either<InvalidInput, Int> {
-        val input = io.read()
-        val number = input.toIntOrNull() ?: return Errors.invalidNumber(input).left()
-        return if (number in range) number.right()
-        else Errors.numberNotInRange(range).left()
+        return AppState.MainMenu
     }
 
     private fun List<PhoneBookEntry>.asBriefList() =
         mapIndexed { index, rec -> "${index + 1}. ${rec.record.toStringShort()}" }.joinToString(separator = "\n")
 
     private object Requests {
-        fun command() = "Enter action (${UserCommand.getAllNames().joinToString()}):"
+        fun action(stateName: String, actionNames: Iterable<String>) =
+            "[$stateName] Enter action (${actionNames.joinToString()}):"
+
+        fun searchQuery() = "Enter search query:"
+
         fun recordType(names: Iterable<String>) = "Enter the type (${names.joinToString()}):"
         fun propertyValue(propertyName: String) = "Enter the ${propertyName}:"
-        fun record() = "Select a record:"
         fun recordProperty(names: Iterable<String>) = "Select a field (${names.joinToString()}):"
     }
 
     private object Responses {
-        fun commandSeparator() = ""
+        fun actionSeparator() = ""
         fun recordsCount(count: Int) = "The Phone Book has $count records."
         fun recordAdded() = "The record added."
-        fun recordRemoved() = "The record removed!"
-        fun recordUpdated() = "The record updated!"
+        fun recordUpdated() = "Saved"
+        fun recordRemoved() = "The record removed"
+        fun foundResults(count: Int) = "Found $count results:"
     }
 
     private object Warnings {
@@ -194,9 +255,11 @@ class Application(private val io: IO) {
     }
 
     private object Errors {
-        fun unknownCommand(input: String) = InvalidInput("Unknown command '$input'")
+        fun unknownAction(input: String) = InvalidInput("Unknown action '$input'")
+        fun invalidAction(action: Action, currentState: AppState) =
+            ApplicationError("Invalid action '$action' for current state '$currentState'")
+
         fun unknownRecordType(input: String) = InvalidInput("Unknown record type '$input'")
-        fun noRecordsTo(command: UserCommand) = InvalidInput("No records to ${command.displayName}!")
         fun invalidNumber(input: String) = InvalidInput("Invalid number: '$input'")
         fun numberNotInRange(range: IntRange) = InvalidInput("Number should belong to range [$range]")
         fun invalidPropName(input: String) = InvalidInput("Invalid field name '$input'")

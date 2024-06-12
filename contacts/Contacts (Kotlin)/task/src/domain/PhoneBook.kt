@@ -10,7 +10,7 @@ data class PhoneBookEntry(val record: Record<*>, val createdAt: LocalDateTime, v
     override fun toString() = buildString {
         append(record)
         append("Time created: ").appendLine(dateTimeFormatter.format(createdAt))
-        append("Time last edit: ").appendLine(dateTimeFormatter.format(updatedAt))
+        append("Time last edit: ").append(dateTimeFormatter.format(updatedAt))
     }
 
     companion object {
@@ -33,13 +33,18 @@ class PhoneBook {
     }
 
     context(RaiseInvalidInput)
-    fun replace(oldRecord: Record<*>, newRecord: Record<*>) {
+    fun replace(oldRecord: Record<*>, newRecord: Record<*>): PhoneBookEntry {
         val oldEntry = entries.find { it.record == oldRecord }
         ensure(oldEntry != null) { Errors.recordDoesNotExist(oldRecord) }
         val index = entries.indexOf(oldEntry)
 
         val newEntry = oldEntry.copy(record = newRecord, updatedAt = LocalDateTime.now())
         entries[index] = newEntry
+        return newEntry
+    }
+
+    fun find(query: NonEmptyString): List<PhoneBookEntry> {
+        TODO()
     }
 
     fun listAll(): List<PhoneBookEntry> = entries
